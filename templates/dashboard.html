@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+.hero-wrapper {
+    text-align:center;
+    margin-bottom:80px;
+}
+
+.hero-title {
+    font-size:110px;
+    font-weight:900;
+    font-family:'plus jakarta sans',sans-serif;
+    letter-spacing:6px;
+    background:linear-gradient(90deg,#a855f7,#6366f1,#22d3ee,#14b8a6);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation: float 4s ease-in-out infinite;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
+}
+
+.hero-sub {
+    margin-top:25px;
+    font-size:20px;
+    opacity:0.8;
+    max-width:900px;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.hero-divider {
+    width:240px;
+    height:6px;
+    background:linear-gradient(90deg,#a855f7,#22d3ee);
+    margin:40px auto 0;
+    border-radius:10px;
+}
+
+/* CARDS */
+
+.feature-grid {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:30px;
+}
+
+.feature-card {
+    background:rgba(255,255,255,0.06);
+    padding:35px;
+    border-radius:20px;
+    backdrop-filter:blur(12px);
+    transition:0.3s;
+}
+
+.feature-card:hover {
+    transform:translateY(-8px);
+    background:rgba(99,102,241,0.18);
+}
+
+.feature-icon {
+    font-size:30px;
+    margin-bottom:15px;
+}
+
+.feature-card h3 {
+    margin-bottom:12px;
+}
+</style>
+
+<div class="hero-wrapper">
+    <div class="hero-title">TrustLens</div>
+
+    <div class="hero-sub">
+        AI-powered multi-dimensional content intelligence platform engineered
+        to evaluate credibility, emotional manipulation, linguistic influence,
+        and structural consistency using explainable AI.
+    </div>
+
+    <div class="hero-divider"></div>
+</div>
+
+<div class="feature-grid">
+
+    <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h3>Credibility Engine</h3>
+        <p>TF-IDF + Logistic Regression trained on multi-source datasets.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">🔥</div>
+        <h3>Emotional Detection</h3>
+        <p>Sentiment density modeling for manipulation detection.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">🔎</div>
+        <h3>Explainable AI</h3>
+        <p>Highlights influential words impacting prediction confidence.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">⚖</div>
+        <h3>Bias Detection</h3>
+        <p>Detects narrative skew and political leaning patterns.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">🧩</div>
+        <h3>Headline Consistency</h3>
+        <p>Validates alignment between headline and article body.</p>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">📈</div>
+        <h3>Analytics Ready</h3>
+        <p>Built for credibility trend tracking and historical analysis.</p>
+    </div>
+
+</div>
+
+{% endblock %}
