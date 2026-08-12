@@ -4,78 +4,104 @@
 {% block head %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-/* ── Chart card ───────────────────────────────── */
-.chart-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  margin-bottom: 20px;
+.page-header {
+  margin: 6px 0 22px;
 }
-.chart-card h3 {
-  font-size: .9rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: .7px;
-  margin-bottom: 20px;
+.page-header h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.06em;
+  color: #10252b;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+}
+.page-header p {
+  margin: 10px 0 0;
+  color: #40575c;
+  font-size: 1.04rem;
 }
 
-/* ── Heatmap grid ─────────────────────────────── */
+.chart-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0.18));
+  border: 1px solid rgba(13, 27, 30, 0.08);
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  margin-bottom: 22px;
+  box-shadow: 0 18px 40px rgba(13, 27, 30, 0.08);
+}
+.chart-card h3 {
+  font-size: .8rem;
+  font-weight: 800;
+  color: #17363b;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chart-card canvas {
+  display: block;
+  width: 100% !important;
+  height: 260px !important;
+}
+
 .heatmap-grid {
   display: grid;
-  grid-template-columns: 56px repeat(24, 1fr);
-  gap: 3px;
+  grid-template-columns: 56px repeat(24, minmax(8px, 1fr));
+  gap: 4px;
   font-size: .65rem;
-  color: var(--text-muted);
+  color: #46666d;
 }
-.heatmap-grid .day-label { display:flex; align-items:center; }
+.heatmap-grid .day-label {
+  display:flex; align-items:center; font-weight:700; font-size:.65rem;
+}
 .heat-cell {
   height: 18px;
-  border-radius: 3px;
-  transition: transform .15s;
+  border-radius: 5px;
+  transition: transform .15s ease, filter .15s ease;
   cursor: default;
 }
-.heat-cell:hover { transform: scale(1.3); z-index: 2; }
-.hour-labels { display:flex; gap:3px; padding-left:59px; margin-bottom:4px; }
-.hour-label  { flex:1; text-align:center; font-size:.6rem; color:var(--text-muted); }
+.heat-cell:hover { transform: scale(1.18); filter: brightness(1.08); z-index: 2; }
+.hour-labels { display:flex; gap:4px; padding-left:60px; margin-bottom:6px; }
+.hour-label  { flex:1; text-align:center; font-size:.58rem; color:#49676b; font-weight:700; }
 
-/* ── Ranked card list ─────────────────────────── */
 .ranked-list { display:flex; flex-direction:column; gap:10px; }
 .rank-item {
   display:flex;
   align-items:center;
   gap:14px;
-  background:rgba(255,255,255,.02);
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:12px 16px;
+  background: rgba(255,255,255,.24);
+  border:1px solid rgba(16,37,43,0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
   transition: all .2s ease;
 }
-.rank-item:hover { border-color: var(--border-glow); transform: translateX(4px); }
+.rank-item:hover { border-color: rgba(16,37,43,0.12); transform: translateX(4px); }
 .rank-num {
-  width:28px; height:28px;
+  width:30px; height:30px;
   border-radius:50%;
-  background:linear-gradient(135deg,var(--purple),var(--blue));
+  background:linear-gradient(135deg,#2bb7a3,#3b82f6);
+  color:#fff;
   display:flex; align-items:center; justify-content:center;
-  font-size:.78rem; font-weight:700; flex-shrink:0;
+  font-size:.76rem; font-weight:800; flex-shrink:0;
 }
-.rank-text { flex:1; font-size:.85rem; color:var(--text-secondary); }
-.rank-badge { font-size:.75rem; font-weight:600; }
+.rank-text { flex:1; font-size:.9rem; color:#1d3940; font-weight:600; }
+.rank-badge {
+  font-size:.7rem; font-weight:800;
+}
 
-/* ── Anomaly card ─────────────────────────────── */
 .anomaly-item {
   display:flex;
   gap:14px;
   padding:14px 0;
-  border-bottom:1px solid var(--border);
+  border-bottom:1px solid rgba(16,37,43,0.08);
 }
 .anomaly-item:last-child { border-bottom:none; }
 .anomaly-dot {
-  width:10px; height:10px; border-radius:50%;
+  width:11px; height:11px; border-radius:50%;
   margin-top:5px; flex-shrink:0;
   animation: pulse 2s infinite;
 }
@@ -83,14 +109,13 @@
   0%,100% { box-shadow:0 0 0 0 currentColor; }
   50%      { box-shadow:0 0 0 6px transparent; }
 }
-.anomaly-title { font-size:.88rem; font-weight:600; color:var(--text-primary); margin-bottom:3px; }
-.anomaly-sub   { font-size:.78rem; color:var(--text-muted); }
+.anomaly-title { font-size:.9rem; font-weight:700; color:#16363d; margin-bottom:3px; }
+.anomaly-sub   { font-size:.8rem; color:#4d6a70; }
 
-/* ── 2-col grid ─────────────────────────────── */
 .trends-grid {
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:20px;
+  gap:22px;
 }
 @media (max-width:900px) { .trends-grid { grid-template-columns:1fr; } }
 </style>
@@ -153,13 +178,35 @@
 const trends = {{ trend_data | tojson }};
 
 const sharedOpts = {
-  plugins: { legend: { labels: { color:'rgba(255,255,255,.55)', font:{size:11} } } },
-  scales: {
-    x: { ticks:{color:'rgba(255,255,255,.35)'}, grid:{color:'rgba(255,255,255,.04)'} },
-    y: { ticks:{color:'rgba(255,255,255,.35)'}, grid:{color:'rgba(255,255,255,.04)'} }
-  },
   responsive: true,
-  animation: { duration: 900, easing:'easeOutQuart' }
+  maintainAspectRatio: false,
+  animation: { duration: 900, easing: 'easeOutQuart' },
+  plugins: {
+    legend: {
+      labels: {
+        color: '#1e3d43',
+        usePointStyle: true,
+        pointStyle: 'circle',
+        boxWidth: 10,
+        boxHeight: 10,
+        padding: 14,
+        font: { size: 11, weight: 700 }
+      }
+    }
+  },
+  scales: {
+    x: {
+      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
+      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
+      border: { display: false }
+    },
+    y: {
+      min: 0,
+      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
+      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
+      border: { display: false }
+    }
+  }
 };
 
 new Chart(document.getElementById('trendingTopicsChart'), {
@@ -172,9 +219,13 @@ new Chart(document.getElementById('trendingTopicsChart'), {
       backgroundColor: ['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#ec4899','#f97316','#ef4444'].slice(0, trends.topic_labels.length),
       borderRadius: 8,
       borderSkipped: false,
+      borderWidth: 0,
+      maxBarThickness: 26,
+      barPercentage: 0.78,
+      categoryPercentage: 0.8
     }]
   },
-  options: { ...sharedOpts, indexAxis:'y' }
+  options: { ...sharedOpts, indexAxis: 'y' }
 });
 
 new Chart(document.getElementById('biasCatChart'), {
@@ -185,9 +236,13 @@ new Chart(document.getElementById('biasCatChart'), {
       label: 'Avg Bias Score',
       data: trends.bias_cat_values,
       backgroundColor: trends.bias_cat_values.map(v =>
-        v > 65 ? 'rgba(239,68,68,.7)' : v > 40 ? 'rgba(234,179,8,.7)' : 'rgba(34,197,94,.7)'),
+        v > 65 ? 'rgba(239,68,68,.82)' : v > 40 ? 'rgba(234,179,8,.82)' : 'rgba(34,197,94,.82)'),
       borderRadius: 8,
       borderSkipped: false,
+      borderWidth: 0,
+      maxBarThickness: 32,
+      barPercentage: 0.76,
+      categoryPercentage: 0.8
     }]
   },
   options: sharedOpts
@@ -201,13 +256,18 @@ new Chart(document.getElementById('aiTrendChart'), {
       label: 'AI Probability %',
       data: trends.ai_values,
       borderColor: '#ec4899',
-      backgroundColor: 'rgba(236,72,153,.1)',
-      tension: .4, fill: true,
-      pointRadius: 3,
-      pointBackgroundColor: '#f472b6'
+      backgroundColor: 'rgba(236,72,153,.12)',
+      borderWidth: 3,
+      tension: .35,
+      fill: true,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#f472b6',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2
     }]
   },
-  options: { ...sharedOpts, scales: { ...sharedOpts.scales } }
+  options: sharedOpts
 });
 
 const DAYS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -238,7 +298,7 @@ DAYS.forEach((day, di) => {
     const cell = document.createElement('div');
     cell.className = 'heat-cell';
     cell.title = `${day} ${hr}:00 — ${val} analyses`;
-    const alpha = 0.08 + intensity * 0.85;
+    const alpha = 0.08 + intensity * 0.9;
     cell.style.background = `rgba(124,58,237,${alpha.toFixed(2)})`;
     heatEl.appendChild(cell);
   });
@@ -257,8 +317,8 @@ const shEl = document.getElementById('suspiciousHeadlines');
 
 const aEl = document.getElementById('anomalies');
 (trends.anomalies || []).forEach(a => {
-  const colors = { high:'var(--red)', medium:'var(--yellow)', low:'var(--green)' };
-  const color  = colors[a.severity] || 'var(--blue)';
+  const colors = { high:'#ef4444', medium:'#f59e0b', low:'#22c55e' };
+  const color = colors[a.severity] || '#3b82f6';
   aEl.innerHTML += `
     <div class="anomaly-item">
       <div class="anomaly-dot" style="background:${color};color:${color}"></div>
