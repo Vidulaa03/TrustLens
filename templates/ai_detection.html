@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}AI Detection{% endblock %}
+
+{% block head %}
+<style>
+/* ── Dual probability circles ─────────────────── */
+.dual-gauges {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  padding: 10px 0 20px;
+}
+
+.gauge-item { text-align: center; }
+.gauge-item .gauge-label {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.gauge-item .gauge-pct {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Signal bars ──────────────────────────────── */
+.signal-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+}
+.signal-icon { width: 24px; text-align: center; font-size: 1rem; }
+.signal-name { width: 220px; font-size: .85rem; color: var(--text-secondary); }
+.signal-track { flex:1; height:8px; background:rgba(255,255,255,.06); border-radius:99px; overflow:hidden; }
+.signal-fill  { height:100%; border-radius:99px; transition:width 1s ease; }
+.signal-badge {
+  padding: 2px 10px;
+  border-radius: 99px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+.sig-high { background:rgba(239,68,68,.2); color:#fca5a5; }
+.sig-med  { background:rgba(234,179,8,.2); color:#fde047; }
+.sig-low  { background:rgba(34,197,94,.2); color:#86efac; }
+
+/* ── Final verdict banner ─────────────────────── */
+.verdict-banner {
+  text-align: center;
+  padding: 32px 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid;
+  margin-bottom: 20px;
+  animation: fadeUp .5s ease;
+}
+.verdict-banner .verdict-emoji { font-size: 3rem; margin-bottom: 12px; display:block; }
+.verdict-banner .verdict-title { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+.verdict-banner .verdict-desc  { color: var(--text-secondary); font-size: .9rem; max-width: 480px; margin: 0 auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-robot" style="font-size:1.6rem;"></i>  AI Content Detector</h1>
+  <p>Estimate whether submitted text is AI-generated or written by a human author.</p>
+</div>
+
+<!-- Input -->
+<div class="input-card">
+  <label><i class="fa-solid fa-file-lines"></i> &nbsp;Paste Text to Analyze</label>
+  <textarea id="articleText" style="min-height:220px;"
+    placeholder="Paste the text you want to test for AI generation…"></textarea>
+  <button class="btn-analyze" id="analyzeBtn" onclick="runAIDetection()">
+    <div class="spinner"></div>
+    <i class="fa-solid fa-robot btn-text"></i>
+    <span class="btn-text">Detect AI Content</span>
+  </button>
+</div>
+
+<!-- Results -->
+<div class="results-section" id="results">
+
+  <!-- Verdict banner -->
+  <div id="verdictBanner" class="verdict-banner">
+    <span class="verdict-emoji" id="verdictEmoji"></span>
+    <div class="verdict-title" id="verdictTitle"></div>
+    <div class="verdict-desc"  id="verdictDesc"></div>
+  </div>
+
+  <!-- Dual probability circles -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-chart-pie"></i> Probability Breakdown</h3>
+    <div class="dual-gauges">
+      <!-- AI circle -->
+      <div class="gauge-item">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          <circle cx="65" cy="65" r="52" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12"/>
+          <circle id="aiCircle" cx="65" cy="65" r="52" fill="none"
+                  stroke="url(#aiGrad)" stroke-width="12"
+                  stroke-linecap="round"
+                  stroke-dasharray="327"
+                  stroke-dashoffset="327"
+                  transform="rotate(-90 65 65)"
+                  style="transition:stroke-dashoffset 1.2s ease"/>
+          <defs>
+            <linearGradient id="aiGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--purple)"/>
+              <stop offset="100%" stop-color="var(--pink)"/>
+            </linearGradient>
+          </defs>
+          <text x="65" y="60" text-anchor="middle" fill="white" font-size="22" font-weight="700" id="aiPctText">0%</text>
+          <text x="65" y="78" text-anchor="middle" fill="var(--text-muted)" font-size="9">AI PROB.</text>
+        </svg>
+        <div class="gauge-label">AI Generated</div>
+      </div>
+
+      <!-- Human circle -->
+      <div class="gauge-item">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          <circle cx="65" cy="65" r="52" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12"/>
+          <circle id="humanCircle" cx="65" cy="65" r="52" fill="none"
+                  stroke="url(#humanGrad)" stroke-width="12"
+                  stroke-linecap="round"
+                  stroke-dasharray="327"
+                  stroke-dashoffset="327"
+                  transform="rotate(-90 65 65)"
+                  style="transition:stroke-dashoffset 1.2s ease"/>
+          <defs>
+            <linearGradient id="humanGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--green)"/>
+              <stop offset="100%" stop-color="var(--cyan)"/>
+            </linearGradient>
+          </defs>
+          <text x="65" y="60" text-anchor="middle" fill="white" font-size="22" font-weight="700" id="humanPctText">0%</text>
+          <text x="65" y="78" text-anchor="middle" fill="var(--text-muted)" font-size="9">HUMAN PROB.</text>
+        </svg>
+        <div class="gauge-label">Human Written</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Signal breakdown -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-signal"></i> Signal Analysis</h3>
+    <div id="signalBars"></div>
+  </div>
+
+  <!-- Pattern details -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-list-check"></i> Detected Patterns</h3>
+    <div class="tag-list" id="detectedPatterns"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function runAIDetection() {
+  const text = document.getElementById('articleText').value.trim();
+  if (!text || text.split(' ').length < 30) {
+    alert('Please paste at least 30 words of text for accurate detection.');
+    return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.classList.add('loading');
+
+  fetch('/ai-detection', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({text})
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.classList.remove('loading');
+    renderAIResults(data);
+  })
+  .catch(() => { btn.classList.remove('loading'); alert('Detection failed. Try again.'); });
+}
+
+function renderAIResults(d) {
+  const circ = 327;
+
+  // Circles
+  const aiOffset    = circ - (d.ai_probability    / 100) * circ;
+  const humanOffset = circ - (d.human_probability / 100) * circ;
+  setTimeout(() => {
+    document.getElementById('aiCircle').style.strokeDashoffset    = aiOffset;
+    document.getElementById('humanCircle').style.strokeDashoffset = humanOffset;
+    document.getElementById('aiPctText').textContent    = d.ai_probability + '%';
+    document.getElementById('humanPctText').textContent = d.human_probability + '%';
+  }, 80);
+
+  // Verdict banner
+  const banner = document.getElementById('verdictBanner');
+  const configs = {
+    'Likely Human':        { emoji:'👤', color:'var(--green)', border:'rgba(34,197,94,.4)',
+                             desc:'Writing patterns, burstiness, and vocabulary suggest a human author.' },
+    'Mixed Signals':       { emoji:'🔀', color:'var(--yellow)', border:'rgba(234,179,8,.4)',
+                             desc:'Some indicators of AI assistance, but also natural human variation.' },
+    'Likely AI Generated': { emoji:'🤖', color:'var(--red)', border:'rgba(239,68,68,.4)',
+                             desc:'Structural patterns, low burstiness, and phrasing are consistent with AI generation.' },
+  };
+  const cfg = configs[d.label] || configs['Mixed Signals'];
+  banner.style.borderColor = cfg.border;
+  banner.style.background  = `${cfg.border.replace('.4','').replace('rgba','rgba').replace(')',', .05)')}`;
+  document.getElementById('verdictEmoji').textContent  = cfg.emoji;
+  document.getElementById('verdictTitle').textContent  = d.label;
+  document.getElementById('verdictTitle').style.color  = cfg.color;
+  document.getElementById('verdictDesc').textContent   = cfg.desc;
+
+  // Signal bars
+  const signalDefs = [
+    { key:'repetitive_structure', label:'Repetitive Sentence Structure', icon:'🔁' },
+    { key:'low_burstiness',       label:'Low Burstiness Pattern',        icon:'📉' },
+    { key:'generic_phrasing',     label:'Over-Polished Generic Phrasing',icon:'✨' },
+    { key:'uniform_length',       label:'Uniform Sentence Length',       icon:'📏' },
+    { key:'rare_words',           label:'Low Rare-Word Usage',           icon:'📖' },
+  ];
+
+  const barsEl = document.getElementById('signalBars');
+  barsEl.innerHTML = signalDefs.map(s => {
+    const val  = Math.round((d.signals[s.key] || 0) * 100);
+    const badgeCls = val > 65 ? 'sig-high' : val > 35 ? 'sig-med' : 'sig-low';
+    const badgeTxt = val > 65 ? 'High' : val > 35 ? 'Medium' : 'Low';
+    const fillColor = val > 65
+      ? 'linear-gradient(90deg,var(--red),var(--pink))'
+      : val > 35
+        ? 'linear-gradient(90deg,var(--yellow),#f97316)'
+        : 'linear-gradient(90deg,var(--green),var(--cyan))';
+    return `
+      <div class="signal-bar-row">
+        <span class="signal-icon">${s.icon}</span>
+        <span class="signal-name">${s.label}</span>
+        <div class="signal-track">
+          <div class="signal-fill" style="width:0%;background:${fillColor}" data-target="${val}%"></div>
+        </div>
+        <span class="signal-badge ${badgeCls}">${badgeTxt}</span>
+      </div>`;
+  }).join('');
+
+  setTimeout(() => {
+    document.querySelectorAll('.signal-fill').forEach(el => {
+      el.style.width = el.dataset.target;
+    });
+  }, 100);
+
+  // Patterns
+  const tagColors = ['tag-purple','tag-blue','tag-red','tag-yellow','tag-cyan'];
+  document.getElementById('detectedPatterns').innerHTML = (d.detected_patterns || [])
+    .map((p,i) => `<span class="tag ${tagColors[i%tagColors.length]}">${p}</span>`).join('');
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Profile{% endblock %}
+{% block page_title %}Profile{% endblock %}
+
+{% block content %}
+  <section class="page-header">
+    <h1>Account profile</h1>
+    <p>Review your workspace details and recent analysis activity.</p>
+  </section>
+
+  <div class="cards-grid" style="margin-top: 8px;">
+    <div class="stat-card">
+      <div class="label"><span>Name</span><span><i class="fa-solid fa-user"></i></span></div>
+      <div class="value" style="font-size:1.5rem;">{{ user.name }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label"><span>Username</span><span><i class="fa-solid fa-at"></i></span></div>
+      <div class="value" style="font-size:1.5rem;">{{ user.username }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label"><span>Email</span><span><i class="fa-solid fa-envelope"></i></span></div>
+      <div class="value" style="font-size:1.1rem;">{{ user.email }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label"><span>Analyses</span><span><i class="fa-solid fa-file-lines"></i></span></div>
+      <div class="value">{{ analysis_count }}</div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top: 20px;">
+    <div class="panel-header">
+      <h3>Recent activity</h3>
+      <span class="status-pill">Latest</span>
+    </div>
+
+    {% if recent_analysis %}
+      <div style="display:grid; gap:12px;">
+        {% for item in recent_analysis %}
+          <div style="padding:14px 16px; border:1px solid rgba(14,27,30,0.08); border-radius:12px; background:rgba(255,255,255,0.32);">
+            <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <strong>{{ item.topic or 'General' }}</strong>
+              <span style="color:var(--muted); font-size:0.8rem;">{{ item.timestamp }}</span>
+            </div>
+            <div style="margin-top:8px; color:var(--ink-soft); font-size:0.92rem;">
+              Trust score: <strong>{{ item.trust_score }}%</strong> · AI signal: <strong>{{ item.ai_probability }}%</strong> · Risk: <strong>{{ item.risk_level }}</strong>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state" style="margin-top: 8px;">
+        <span class="empty-icon"><i class="fa-solid fa-chart-line"></i></span>
+        <h3>No saved analysis yet</h3>
+        <p>Run your first content review to populate your account activity.</p>
+        <a class="primary-button" href="/analyze">Analyze Article</a>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}API Access{% endblock %}
+{% block page_title %}API Access{% endblock %}
+
+{% block content %}
+  <section class="page-header">
+    <div>
+      <h1>API Access</h1>
+      <p>Enterprise-style API management UI. Backend authentication is not yet enabled.</p>
+    </div>
+  </section>
+
+  <div class="settings-grid">
+    <div class="settings-block">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div>
+          <div class="muted-copy" style="text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">API Status</div>
+          <strong>{{ api_status }}</strong>
+        </div>
+        <span class="pill pill-success" style="padding: 6px 10px;">Connected</span>
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <div class="muted-copy" style="text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Usage</div>
+      <div style="font-size: 1.5rem; font-weight: 700;">{{ usage_total }} / {{ usage_limit }}</div>
+      <div class="muted-copy" style="margin-top: 8px;">Requests this month</div>
+    </div>
+
+    <div class="settings-block">
+      <div class="muted-copy" style="text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;">API Key</div>
+      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <input type="password" value="••••••••••••••••" readonly>
+        <button class="solid-button" type="button">Copy</button>
+        <button class="solid-button" type="button" style="background: #111827; border: 1px solid var(--border);">Regenerate</button>
+      </div>
+      <p class="muted-copy" style="margin-top: 12px;">API management UI — backend authentication not yet enabled.</p>
+    </div>
+  </div>
+{% endblock %}

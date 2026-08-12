@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}Statistics{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── Counter animation ────────────────────────── */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.counter { animation: countUp .6s ease; }
+
+/* ── Chart card ───────────────────────────────── */
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.chart-card h3 {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Charts 2-column layout ───────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+/* ── Recent activity table ─────────────────────── */
+.activity-table { width: 100%; border-collapse: collapse; }
+.activity-table th {
+  text-align: left;
+  padding: 10px 14px;
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.activity-table td {
+  padding: 12px 14px;
+  font-size: .85rem;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.activity-table tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── Stat cards accent colors ─────────────────── */
+.card-icon {
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not stats %}
+<div class="empty-state" style="margin-top: 12px; max-width: 760px;">
+  <span class="empty-icon"><i class="fa-solid fa-chart-column"></i></span>
+  <h3>No platform statistics yet</h3>
+  <p>Run a few analyses to populate the TrustLens dashboard and trend intelligence.</p>
+  <button class="solid-button" onclick="window.location.href='/analyze'">Analyze Article</button>
+</div>
+{% else %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-chart-bar" style="font-size:1.6rem;"></i>  Platform Statistics</h1>
+  <p>Analytics and insights from all articles analyzed through TrustLens.</p>
+</div>
+
+<div class="cards-grid" style="grid-template-columns:repeat(auto-fit,minmax(175px,1fr))">
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--blue))">
+    <span class="card-icon">📄</span>
+    <span class="card-label">Total Articles</span>
+    <span class="card-value counter" id="totalArticles">{{ stats.total_articles }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--cyan),var(--green))">
+    <span class="card-icon">🛡️</span>
+    <span class="card-label">Avg Trust Score</span>
+    <span class="card-value counter" id="avgTrust">{{ stats.avg_trust_score }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--yellow),var(--red))">
+    <span class="card-icon">⚖️</span>
+    <span class="card-label">Avg Bias Score</span>
+    <span class="card-value counter" id="avgBias">{{ stats.avg_bias_score }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--pink))">
+    <span class="card-icon">🤖</span>
+    <span class="card-label">AI Detection Avg</span>
+    <span class="card-value counter" id="avgAI">{{ stats.avg_ai_score }}%</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--blue),var(--cyan))">
+    <span class="card-icon">🏷️</span>
+    <span class="card-label">Top Topic</span>
+    <span class="card-value" style="font-size:1.2rem;" id="topTopic">{{ stats.top_topic }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--green),var(--cyan))">
+    <span class="card-icon">📅</span>
+    <span class="card-label">Peak Day</span>
+    <span class="card-value" style="font-size:1.2rem;" id="peakDay">{{ stats.peak_day }}</span>
+  </div>
+</div>
+
+<div class="charts-grid">
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-chart-line"></i> Trust Score Over Time</h3>
+    <canvas id="trustChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-chart-pie"></i> Topic Distribution</h3>
+    <canvas id="topicChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-chart-simple"></i> Bias Score Trend</h3>
+    <canvas id="biasChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-robot"></i> AI Detection Rate</h3>
+    <canvas id="aiChart" height="220"></canvas>
+  </div>
+</div>
+
+<div class="chart-card">
+  <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h3>
+  {% if stats.recent_activity %}
+  <table class="activity-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Snippet</th>
+        <th>Trust</th>
+        <th>Bias</th>
+        <th>Topic</th>
+        <th>AI%</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in stats.recent_activity %}
+      <tr>
+        <td>{{ row.date }}</td>
+        <td>{{ row.snippet }}</td>
+        <td><span class="tag {% if row.trust > 65 %}tag-green{% elif row.trust > 40 %}tag-yellow{% else %}tag-red{% endif %}">{{ row.trust }}</span></td>
+        <td><span class="tag {% if row.bias < 35 %}tag-green{% elif row.bias < 65 %}tag-yellow{% else %}tag-red{% endif %}">{{ row.bias }}</span></td>
+        <td><span class="tag tag-blue">{{ row.topic }}</span></td>
+        <td>{{ row.ai_pct }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-muted);text-align:center;padding:30px;">No analysis history yet. Start analyzing articles!</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if stats %}
+<script>
+const chartDefaults = {
+  color: 'rgba(255,255,255,.7)',
+  borderColor: 'rgba(255,255,255,.1)',
+  plugins: {
+    legend: { labels: { color: 'rgba(255,255,255,.6)', font: { size: 11 } } }
+  },
+  scales: {
+    x: { ticks: { color: 'rgba(255,255,255,.4)' }, grid: { color: 'rgba(255,255,255,.05)' } },
+    y: { ticks: { color: 'rgba(255,255,255,.4)' }, grid: { color: 'rgba(255,255,255,.05)' } }
+  }
+};
+
+const chartData = {{ stats.chart_data | tojson }};
+
+new Chart(document.getElementById('trustChart'), {
+  type: 'line',
+  data: {
+    labels: chartData.dates,
+    datasets: [{
+      label: 'Trust Score',
+      data: chartData.trust_scores,
+      borderColor: '#7c3aed',
+      backgroundColor: 'rgba(124,58,237,.15)',
+      tension: .4, fill: true, pointRadius: 4,
+      pointBackgroundColor: '#a855f7'
+    }]
+  },
+  options: { ...chartDefaults, responsive: true }
+});
+
+const topicColors = ['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#ec4899','#f97316','#ef4444'];
+new Chart(document.getElementById('topicChart'), {
+  type: 'doughnut',
+  data: {
+    labels: chartData.topic_labels,
+    datasets: [{
+      data: chartData.topic_counts,
+      backgroundColor: topicColors,
+      borderColor: '#080b14',
+      borderWidth: 3,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'right', labels: { color: 'rgba(255,255,255,.6)', font:{ size:11 }, padding:12 } }
+    }
+  }
+});
+
+new Chart(document.getElementById('biasChart'), {
+  type: 'bar',
+  data: {
+    labels: chartData.dates,
+    datasets: [{
+      label: 'Bias Score',
+      data: chartData.bias_scores,
+      backgroundColor: chartData.bias_scores.map(v =>
+        v > 65 ? 'rgba(239,68,68,.7)' : v > 35 ? 'rgba(234,179,8,.7)' : 'rgba(34,197,94,.7)'),
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: { ...chartDefaults, responsive: true }
+});
+
+new Chart(document.getElementById('aiChart'), {
+  type: 'line',
+  data: {
+    labels: chartData.dates,
+    datasets: [{
+      label: 'AI Probability %',
+      data: chartData.ai_scores,
+      borderColor: '#ec4899',
+      backgroundColor: 'rgba(236,72,153,.12)',
+      tension: .4, fill: true, pointRadius: 4,
+      pointBackgroundColor: '#f472b6'
+    }]
+  },
+  options: { ...chartDefaults, responsive: true }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Bias Detection{% endblock %}
+
+{% block head %}
+<style>
+/* ── Neutrality meter ─────────────────────────────── */
+.neutrality-track {
+  position: relative;
+  height: 14px;
+  border-radius: 99px;
+  background: linear-gradient(90deg,
+    var(--green) 0%,
+    var(--yellow) 45%,
+    var(--red) 100%);
+  margin: 10px 0;
+  box-shadow: 0 0 12px rgba(124,58,237,.3);
+}
+.neutrality-needle {
+  position: absolute;
+  top: 50%; transform: translate(-50%, -50%);
+  width: 22px; height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  border: 3px solid var(--bg-base);
+  box-shadow: 0 0 10px rgba(255,255,255,.5);
+  transition: left 1.2s cubic-bezier(.4,0,.2,1);
+}
+.meter-labels { display: flex; justify-content: space-between; font-size:.75rem; color: var(--text-muted); }
+
+/* ── Word list ────────────────────────────────────── */
+.word-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.word-chip {
+  padding: 5px 13px;
+  border-radius: 99px;
+  font-size: .8rem;
+  font-weight: 600;
+  animation: popIn .3s ease;
+}
+@keyframes popIn { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+
+/* ── Sentence highlight block ─────────────────────── */
+.biased-sentence {
+  background: rgba(239,68,68,.08);
+  border-left: 3px solid var(--red);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  margin: 8px 0;
+  font-size: .9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.biased-sentence b { color: #fca5a5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-scale-unbalanced" style="font-size:1.6rem;"></i>  Bias Detection Engine</h1>
+  <p>Analyze emotional, political, sensational, or one-sided language in any article.</p>
+</div>
+
+<!-- Input -->
+<div class="input-card">
+  <label><i class="fa-solid fa-file-lines"></i> &nbsp;Paste Article Text</label>
+  <textarea id="articleText" placeholder="Paste your article here (min 50 words for best results)…"></textarea>
+  <button class="btn-analyze" id="analyzeBtn" onclick="runBiasAnalysis()">
+    <div class="spinner"></div>
+    <i class="fa-solid fa-magnifying-glass btn-text"></i>
+    <span class="btn-text">Analyze Bias</span>
+  </button>
+</div>
+
+<!-- Results -->
+<div class="results-section" id="results">
+
+  <!-- Top stat cards -->
+  <div class="cards-grid">
+    <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--pink))">
+      <span class="card-label">Bias Score</span>
+      <span class="card-value" id="biasScore">—</span>
+      <span class="card-sub">out of 100</span>
+    </div>
+    <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--red),var(--yellow))">
+      <span class="card-label">Emotional Words</span>
+      <span class="card-value" id="emotionalCount">—</span>
+      <span class="card-sub">detected</span>
+    </div>
+    <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--yellow),var(--green))">
+      <span class="card-label">Sensational Phrases</span>
+      <span class="card-value" id="sensationalCount">—</span>
+      <span class="card-sub">detected</span>
+    </div>
+    <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--blue),var(--cyan))">
+      <span class="card-label">Biased Sentences</span>
+      <span class="card-value" id="biasedSentCount">—</span>
+      <span class="card-sub">flagged</span>
+    </div>
+  </div>
+
+  <!-- Neutrality meter -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-gauge"></i> Neutrality Meter</h3>
+    <div class="neutrality-track">
+      <div class="neutrality-needle" id="needle" style="left:0%"></div>
+    </div>
+    <div class="meter-labels"><span>Neutral</span><span>Slightly Biased</span><span>Highly Biased</span></div>
+
+    <div style="margin-top:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <span>Verdict:</span>
+      <span id="verdictBadge" class="verdict">—</span>
+    </div>
+  </div>
+
+  <!-- Emotional words -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-fire"></i> Emotionally Charged Words</h3>
+    <div class="word-grid" id="emotionalWords"></div>
+  </div>
+
+  <!-- Sensational phrases -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-bolt"></i> Sensational / Loaded Phrases</h3>
+    <div class="word-grid" id="sensationalPhrases"></div>
+  </div>
+
+  <!-- Biased sentences -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-highlighter"></i> Flagged Biased Sentences</h3>
+    <div id="biasedSentences"></div>
+  </div>
+
+  <!-- Recommendation -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-lightbulb"></i> Recommendation</h3>
+    <p id="recommendation" style="color:var(--text-secondary);line-height:1.7;"></p>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function runBiasAnalysis() {
+  const text = document.getElementById('articleText').value.trim();
+  if (!text || text.split(' ').length < 10) {
+    alert('Please paste a longer article (at least 10 words).');
+    return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.classList.add('loading');
+
+  fetch('/bias-detection', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({text})
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.classList.remove('loading');
+    renderBiasResults(data);
+  })
+  .catch(() => { btn.classList.remove('loading'); alert('Analysis failed. Please try again.'); });
+}
+
+function renderBiasResults(d) {
+  document.getElementById('biasScore').textContent       = d.bias_score;
+  document.getElementById('emotionalCount').textContent  = d.emotional_words.length;
+  document.getElementById('sensationalCount').textContent= d.sensational_phrases.length;
+  document.getElementById('biasedSentCount').textContent = d.biased_sentences.length;
+
+  // Needle (0=left, 100=right)
+  document.getElementById('needle').style.left = d.bias_score + '%';
+
+  // Verdict
+  const vEl = document.getElementById('verdictBadge');
+  if (d.bias_score < 30) {
+    vEl.className = 'verdict verdict-green';
+    vEl.innerHTML = '<i class="fa-solid fa-circle-check"></i> Mostly Neutral';
+  } else if (d.bias_score < 60) {
+    vEl.className = 'verdict verdict-yellow';
+    vEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Slightly Biased';
+  } else {
+    vEl.className = 'verdict verdict-red';
+    vEl.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Highly Biased';
+  }
+
+  // Word chips
+  const ew = document.getElementById('emotionalWords');
+  ew.innerHTML = d.emotional_words.length
+    ? d.emotional_words.map(w => `<span class="word-chip tag tag-red">${w}</span>`).join('')
+    : '<span style="color:var(--text-muted)">None detected</span>';
+
+  const sp = document.getElementById('sensationalPhrases');
+  sp.innerHTML = d.sensational_phrases.length
+    ? d.sensational_phrases.map(p => `<span class="word-chip tag tag-yellow">${p}</span>`).join('')
+    : '<span style="color:var(--text-muted)">None detected</span>';
+
+  // Biased sentences
+  const bs = document.getElementById('biasedSentences');
+  bs.innerHTML = d.biased_sentences.length
+    ? d.biased_sentences.map(s => `<div class="biased-sentence">${s}</div>`).join('')
+    : '<span style="color:var(--text-muted)">No obviously biased sentences detected.</span>';
+
+  // Recommendation
+  document.getElementById('recommendation').textContent = d.recommendation;
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
+{% endblock %}

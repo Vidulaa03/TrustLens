@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Trends{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── Chart card ───────────────────────────────── */
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.chart-card h3 {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .7px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Heatmap grid ─────────────────────────────── */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(24, 1fr);
+  gap: 3px;
+  font-size: .65rem;
+  color: var(--text-muted);
+}
+.heatmap-grid .day-label { display:flex; align-items:center; }
+.heat-cell {
+  height: 18px;
+  border-radius: 3px;
+  transition: transform .15s;
+  cursor: default;
+}
+.heat-cell:hover { transform: scale(1.3); z-index: 2; }
+.hour-labels { display:flex; gap:3px; padding-left:59px; margin-bottom:4px; }
+.hour-label  { flex:1; text-align:center; font-size:.6rem; color:var(--text-muted); }
+
+/* ── Ranked card list ─────────────────────────── */
+.ranked-list { display:flex; flex-direction:column; gap:10px; }
+.rank-item {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  background:rgba(255,255,255,.02);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 16px;
+  transition: all .2s ease;
+}
+.rank-item:hover { border-color: var(--border-glow); transform: translateX(4px); }
+.rank-num {
+  width:28px; height:28px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--purple),var(--blue));
+  display:flex; align-items:center; justify-content:center;
+  font-size:.78rem; font-weight:700; flex-shrink:0;
+}
+.rank-text { flex:1; font-size:.85rem; color:var(--text-secondary); }
+.rank-badge { font-size:.75rem; font-weight:600; }
+
+/* ── Anomaly card ─────────────────────────────── */
+.anomaly-item {
+  display:flex;
+  gap:14px;
+  padding:14px 0;
+  border-bottom:1px solid var(--border);
+}
+.anomaly-item:last-child { border-bottom:none; }
+.anomaly-dot {
+  width:10px; height:10px; border-radius:50%;
+  margin-top:5px; flex-shrink:0;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { box-shadow:0 0 0 0 currentColor; }
+  50%      { box-shadow:0 0 0 6px transparent; }
+}
+.anomaly-title { font-size:.88rem; font-weight:600; color:var(--text-primary); margin-bottom:3px; }
+.anomaly-sub   { font-size:.78rem; color:var(--text-muted); }
+
+/* ── 2-col grid ─────────────────────────────── */
+.trends-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+@media (max-width:900px) { .trends-grid { grid-template-columns:1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not trend_data %}
+<div class="empty-state" style="margin-top: 12px; max-width: 760px;">
+  <span class="empty-icon"><i class="fa-solid fa-fire-flame-curved"></i></span>
+  <h3>No trend data yet</h3>
+  <p>Once the first set of articles is analyzed, the trend intelligence panel will populate automatically.</p>
+  <button class="solid-button" onclick="window.location.href='/analyze'">Analyze Article</button>
+</div>
+{% else %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-fire-flame-curved" style="font-size:1.6rem;"></i>  Intelligence Trends</h1>
+  <p>Patterns, anomalies, and insights from recent TrustLens analyses.</p>
+</div>
+
+<div class="trends-grid">
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-arrow-trend-up"></i> Trending Topics This Week</h3>
+    <canvas id="trendingTopicsChart" height="240"></canvas>
+  </div>
+
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-scale-unbalanced"></i> Rising Bias Categories</h3>
+    <canvas id="biasCatChart" height="240"></canvas>
+  </div>
+</div>
+
+<div class="chart-card">
+  <h3><i class="fa-solid fa-robot"></i> AI-Generated Content Trend</h3>
+  <canvas id="aiTrendChart" height="140"></canvas>
+</div>
+
+<div class="chart-card">
+  <h3><i class="fa-solid fa-calendar-days"></i> Activity Heatmap (Hour × Day)</h3>
+  <div class="hour-labels" id="hourLabels"></div>
+  <div class="heatmap-grid" id="heatmap"></div>
+</div>
+
+<div class="trends-grid">
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-newspaper"></i> Most Suspicious Headlines</h3>
+    <div class="ranked-list" id="suspiciousHeadlines"></div>
+  </div>
+
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-triangle-exclamation"></i> Recent Anomalies</h3>
+    <div id="anomalies"></div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if trend_data %}
+<script>
+const trends = {{ trend_data | tojson }};
+
+const sharedOpts = {
+  plugins: { legend: { labels: { color:'rgba(255,255,255,.55)', font:{size:11} } } },
+  scales: {
+    x: { ticks:{color:'rgba(255,255,255,.35)'}, grid:{color:'rgba(255,255,255,.04)'} },
+    y: { ticks:{color:'rgba(255,255,255,.35)'}, grid:{color:'rgba(255,255,255,.04)'} }
+  },
+  responsive: true,
+  animation: { duration: 900, easing:'easeOutQuart' }
+};
+
+new Chart(document.getElementById('trendingTopicsChart'), {
+  type: 'bar',
+  data: {
+    labels: trends.topic_labels,
+    datasets: [{
+      label: 'Articles',
+      data: trends.topic_counts,
+      backgroundColor: ['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#ec4899','#f97316','#ef4444'].slice(0, trends.topic_labels.length),
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: { ...sharedOpts, indexAxis:'y' }
+});
+
+new Chart(document.getElementById('biasCatChart'), {
+  type: 'bar',
+  data: {
+    labels: trends.bias_cat_labels,
+    datasets: [{
+      label: 'Avg Bias Score',
+      data: trends.bias_cat_values,
+      backgroundColor: trends.bias_cat_values.map(v =>
+        v > 65 ? 'rgba(239,68,68,.7)' : v > 40 ? 'rgba(234,179,8,.7)' : 'rgba(34,197,94,.7)'),
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: sharedOpts
+});
+
+new Chart(document.getElementById('aiTrendChart'), {
+  type: 'line',
+  data: {
+    labels: trends.ai_dates,
+    datasets: [{
+      label: 'AI Probability %',
+      data: trends.ai_values,
+      borderColor: '#ec4899',
+      backgroundColor: 'rgba(236,72,153,.1)',
+      tension: .4, fill: true,
+      pointRadius: 3,
+      pointBackgroundColor: '#f472b6'
+    }]
+  },
+  options: { ...sharedOpts, scales: { ...sharedOpts.scales } }
+});
+
+const DAYS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const HOURS = Array.from({length:24}, (_,i) => i);
+const hmap  = trends.heatmap;
+const max   = Math.max(...hmap.flat());
+
+const hlWrap = document.getElementById('hourLabels');
+hlWrap.innerHTML = '';
+for (let hr=0; hr<24; hr++) {
+  const d = document.createElement('div');
+  d.className = 'hour-label';
+  if (hr % 6 === 0) d.textContent = `${hr}h`;
+  hlWrap.appendChild(d);
+}
+
+const heatEl = document.getElementById('heatmap');
+heatEl.innerHTML = '';
+DAYS.forEach((day, di) => {
+  const lbl = document.createElement('div');
+  lbl.className = 'day-label';
+  lbl.textContent = day;
+  heatEl.appendChild(lbl);
+
+  HOURS.forEach(hr => {
+    const val = hmap[di][hr] || 0;
+    const intensity = max > 0 ? val / max : 0;
+    const cell = document.createElement('div');
+    cell.className = 'heat-cell';
+    cell.title = `${day} ${hr}:00 — ${val} analyses`;
+    const alpha = 0.08 + intensity * 0.85;
+    cell.style.background = `rgba(124,58,237,${alpha.toFixed(2)})`;
+    heatEl.appendChild(cell);
+  });
+});
+
+const shEl = document.getElementById('suspiciousHeadlines');
+(trends.suspicious_headlines || []).forEach((h, i) => {
+  const riskCls = h.risk > 65 ? 'tag-red' : h.risk > 40 ? 'tag-yellow' : 'tag-green';
+  shEl.innerHTML += `
+    <div class="rank-item">
+      <div class="rank-num">${i+1}</div>
+      <div class="rank-text">${h.headline}</div>
+      <span class="rank-badge tag ${riskCls}">${h.risk}</span>
+    </div>`;
+});
+
+const aEl = document.getElementById('anomalies');
+(trends.anomalies || []).forEach(a => {
+  const colors = { high:'var(--red)', medium:'var(--yellow)', low:'var(--green)' };
+  const color  = colors[a.severity] || 'var(--blue)';
+  aEl.innerHTML += `
+    <div class="anomaly-item">
+      <div class="anomaly-dot" style="background:${color};color:${color}"></div>
+      <div>
+        <div class="anomaly-title">${a.title}</div>
+        <div class="anomaly-sub">${a.description}</div>
+      </div>
+    </div>`;
+});
+</script>
+{% endif %}
+{% endblock %}
