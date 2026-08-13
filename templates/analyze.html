@@ -11,19 +11,16 @@
   </section>
 
   <div class="form-card">
-    <div class="tabs">
-      <button class="tab active" type="button">Text</button>
-      <button class="tab" type="button" disabled>URL</button>
-      <button class="tab" type="button" disabled>File</button>
-    </div>
-
-    <form method="post" action="/analyze" style="margin-top: 18px;">
-      <label for="article_text" style="display:block; margin-bottom:10px; font-size:0.8rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700;">Article text</label>
-      <textarea id="article_text" name="article_text" class="editor" placeholder="Paste article text here...">{{ article_text }}</textarea>
-      <div class="input-meta">
-        <span><span id="wordCount">0</span> words</span>
-        <span><span id="charCount">0</span> characters</span>
+    <form method="post" action="/analyze" enctype="multipart/form-data" style="margin-top: 0;">
+      <div class="source-panel">
+        <label for="article_text" style="display:block; margin-bottom:10px; font-size:0.8rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700;">Article text</label>
+        <textarea id="article_text" name="article_text" class="editor" placeholder="Paste article text here...">{{ article_text }}</textarea>
+        <div class="input-meta">
+          <span><span id="wordCount">0</span> words</span>
+          <span><span id="charCount">0</span> characters</span>
+        </div>
       </div>
+
       <div class="analyze-toolbar">
         <button class="primary-button" type="submit">Analyze Content</button>
       </div>
@@ -65,7 +62,7 @@
           <div class="meter-value">{{ analysis.one_sided_score }}%</div>
         </div>
         <div class="meter-card">
-          <div class="meter-label">AI detection</div>
+          <div class="meter-label">AI-writing likelihood</div>
           <div class="meter-track"><div class="meter-fill" style="width: {{ analysis.ai_probability }}%; background: linear-gradient(90deg, #2bb7a3, #3b82f6);"></div></div>
           <div class="meter-value">{{ analysis.ai_probability }}%</div>
         </div>
@@ -76,6 +73,12 @@
       </div>
       <div style="margin-top: 10px; color: var(--ink-soft); font-size: 0.92rem;">
         <strong>Signal summary:</strong> {{ analysis.signals_summary }}
+      </div>
+
+      <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="/history" class="secondary-button" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-history"></i> View History
+        </a>
       </div>
     </div>
   {% endif %}
@@ -88,12 +91,14 @@
   const charCount = document.getElementById('charCount');
 
   function updateCounts() {
+    if (!textarea) return;
     const text = textarea.value.trim();
     const words = text ? text.split(/\s+/).length : 0;
     wordCount.textContent = words;
     charCount.textContent = text.length;
   }
-  textarea.addEventListener('input', updateCounts);
+
+  if (textarea) textarea.addEventListener('input', updateCounts);
   updateCounts();
 </script>
 {% endblock %}

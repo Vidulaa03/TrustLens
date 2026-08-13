@@ -130,6 +130,9 @@
     .panel-header h3 { margin: 0; font-size: 0.95rem; letter-spacing: 0.02em; }
     .status-pill { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 8px; border-radius: 999px; background: rgba(14,27,30,0.05); border: 1px solid rgba(14,27,30,0.06); color: var(--muted); }
     .chart-wrap { position: relative; min-height: 220px; }
+    .tooltip-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: rgba(43, 183, 163, 0.15); color: #2bb7a3; font-size: 0.65rem; line-height: 1; text-align: center; padding-top: 1.5px; cursor: help; position: relative; margin-left: 4px; }
+    .tooltip-icon:hover::after { content: attr(data-tooltip); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%); background: #1b2127; color: white; padding: 8px 10px; border-radius: 8px; font-size: 0.75rem; white-space: nowrap; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .tooltip-icon:hover::before { content: ''; position: absolute; bottom: 119%; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid #1b2127; z-index: 1000; }
     @media (max-width: 980px) { .two-col { grid-template-columns: 1fr; } .main-content { padding: 18px 18px 28px; } }
     @media (max-width: 760px) { body { display: block; } .sidebar { position: fixed; left: -100%; width: min(86vw, 300px); transition: left 180ms ease; } .sidebar.open { left: 0; } .main-content { padding-top: 18px; } .topbar { flex-direction: column; align-items: flex-start; } .topbar-actions, .search-box { width: 100%; } .search-box { min-width: 0; } .page-header h1 { font-size: 2.6rem; } }
   </style>
@@ -141,6 +144,7 @@
     <ul class="sidebar-nav">
       <li><a href="/dashboard" class="nav-link {% if request.path in ['/dashboard', '/'] %}active{% endif %}"><i class="fa-solid fa-gauge-high"></i><span>Dashboard</span></a></li>
       <li><a href="/analyze" class="nav-link {% if request.path == '/analyze' %}active{% endif %}"><i class="fa-solid fa-magnifying-glass"></i><span>Analyze Article</span></a></li>
+      <li><a href="/compare" class="nav-link {% if request.path == '/compare' %}active{% endif %}"><i class="fa-solid fa-scale-balanced"></i><span>Compare Articles</span></a></li>
       <li><a href="/history" class="nav-link {% if request.path == '/history' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a></li>
       <li><a href="/statistics" class="nav-link {% if request.path == '/statistics' %}active{% endif %}"><i class="fa-solid fa-chart-bar"></i><span>Statistics</span></a></li>
       <li><a href="/trends" class="nav-link {% if request.path == '/trends' %}active{% endif %}"><i class="fa-solid fa-fire-flame-curved"></i><span>Trends</span></a></li>

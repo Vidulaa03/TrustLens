@@ -25,19 +25,20 @@
         <div class="value">{{ dashboard_data.articles_analyzed }}</div>
       </div>
       <div class="stat-card">
-        <div class="label"><span>Avg trust</span><span><i class="fa-solid fa-shield-heart"></i></span></div>
-        <div class="value">{{ dashboard_data.average_trust_score }}%</div>
+        <div class="label"><span>Avg trust score <span class="tooltip-icon" data-tooltip="Composite score combining ML model + bias signals + sentiment"></span></span><span><i class="fa-solid fa-shield-heart"></i></span></div>
+        <div class="value">{{ dashboard_data.average_trust_score }}</div>
+        <div style="font-size: 0.75rem; color: var(--ink-soft); margin-top: 6px;">{{ dashboard_data.average_trust_interpretation }}</div>
       </div>
       <div class="stat-card">
-        <div class="label"><span>Avg bias</span><span><i class="fa-solid fa-scale-balanced"></i></span></div>
-        <div class="value">{{ dashboard_data.average_bias }}%</div>
+        <div class="label"><span>Avg bias score <span class="tooltip-icon" data-tooltip="Detects emotional language, one-sided arguments, political framing"></span></span><span><i class="fa-solid fa-scale-balanced"></i></span></div>
+        <div class="value">{{ dashboard_data.average_bias|int }}%</div>
       </div>
       <div class="stat-card">
-        <div class="label"><span>AI content</span><span><i class="fa-solid fa-robot"></i></span></div>
-        <div class="value">{{ dashboard_data.average_ai_probability }}%</div>
+        <div class="label"><span>AI-writing likelihood <span class="tooltip-icon" data-tooltip="Probability estimate based on sentence structure and vocabulary patterns"></span></span><span><i class="fa-solid fa-robot"></i></span></div>
+        <div class="value">{{ dashboard_data.average_ai_probability|int }}%</div>
       </div>
       <div class="stat-card">
-        <div class="label"><span>High risk</span><span><i class="fa-solid fa-triangle-exclamation"></i></span></div>
+        <div class="label"><span>High-risk articles</span><span><i class="fa-solid fa-triangle-exclamation"></i></span></div>
         <div class="value">{{ dashboard_data.high_risk_count }}</div>
       </div>
     </section>
@@ -53,28 +54,28 @@
 
       <div class="panel">
         <div class="panel-header">
-          <h3>Content risk</h3>
-          <span class="status-pill">Distribution</span>
+          <h3>Content risk distribution</h3>
+          <span class="status-pill">Accurate</span>
         </div>
         <div style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
-          {% set low = ((dashboard_data.articles_analyzed - dashboard_data.high_risk_count) * 100 / dashboard_data.articles_analyzed) if dashboard_data.articles_analyzed else 0 %}
-          {% set medium = 30 %}
-          {% set high = (dashboard_data.high_risk_count * 100 / dashboard_data.articles_analyzed) if dashboard_data.articles_analyzed else 0 %}
           <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:48px; color:var(--muted); font-size:0.78rem;">Low</div>
-            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ low }}%; background:linear-gradient(90deg,#2bb7a3,#4ade80);"></span></div>
-            <strong>{{ low|round(0) }}%</strong>
+            <div style="width:48px; color:var(--muted); font-size:0.78rem; font-weight:700;">Low</div>
+            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ dashboard_data.risk_distribution.low_percentage }}%; background:linear-gradient(90deg,#2bb7a3,#4ade80);"></span></div>
+            <strong style="min-width:45px; text-align:right;">{{ dashboard_data.risk_distribution.low_percentage }}%</strong>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:48px; color:var(--muted); font-size:0.78rem;">Med</div>
-            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ medium }}%; background:linear-gradient(90deg,#f5b942,#f0ad4e);"></span></div>
-            <strong>{{ medium }}%</strong>
+            <div style="width:48px; color:var(--muted); font-size:0.78rem; font-weight:700;">Med</div>
+            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ dashboard_data.risk_distribution.medium_percentage }}%; background:linear-gradient(90deg,#f5b942,#f0ad4e);"></span></div>
+            <strong style="min-width:45px; text-align:right;">{{ dashboard_data.risk_distribution.medium_percentage }}%</strong>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:48px; color:var(--muted); font-size:0.78rem;">High</div>
-            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ high }}%; background:linear-gradient(90deg,#e76d64,#ce4a4a);"></span></div>
-            <strong>{{ high|round(0) }}%</strong>
+            <div style="width:48px; color:var(--muted); font-size:0.78rem; font-weight:700;">High</div>
+            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ dashboard_data.risk_distribution.high_percentage }}%; background:linear-gradient(90deg,#e76d64,#ce4a4a);"></span></div>
+            <strong style="min-width:45px; text-align:right;">{{ dashboard_data.risk_distribution.high_percentage }}%</strong>
           </div>
+        </div>
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(14,27,30,0.08); font-size: 0.75rem; color: var(--muted);">
+          Total: {{ dashboard_data.risk_distribution.total_percentage }}% (Low: {{ dashboard_data.risk_distribution.low_count }}, Med: {{ dashboard_data.risk_distribution.medium_count }}, High: {{ dashboard_data.risk_distribution.high_count }})
         </div>
       </div>
     </section>

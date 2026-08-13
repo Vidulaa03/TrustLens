@@ -92,10 +92,15 @@
 
 from __future__ import annotations
 
+import base64
 import csv
 import io
+import re
 from datetime import datetime
+from html.parser import HTMLParser
 from functools import wraps
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -109,9 +114,22 @@ from models.database import (
     get_user_by_username_or_email,
     init_db,
     insert_analysis,
+    recalculate_risk_levels,
 )
 from services.ai_detection_service import analyze_ai_signals
 from services.analytics_service import build_dashboard_summary, build_statistics_payload, build_trends_payload, classify_risk
+from services.enhanced_analytics import (
+    build_dashboard_summary_v2,
+    build_statistics_payload_v2,
+    build_trends_payload_v2,
+    calculate_risk_distribution,
+    calculate_risk_level,
+    format_date_short,
+    generate_intelligence_summary,
+    generate_why_flagged_summary,
+    generate_recommended_action,
+    get_trust_score_interpretation,
+)
 from services.bias_service import analyze_bias
 from services.credibility_service import analyze_news
 from services.headline_service import analyze_headline_consistency
@@ -122,6 +140,44 @@ app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
 app.secret_key = "trustlens-dev-secret-key"
 init_db()
+recalculate_risk_levels()
+
+
+class _ArticleTextParser(HTMLParser):
+    """Extract visible text without making article analysis depend on bs4."""
+
+    _ignored_tags = {"script", "style", "noscript", "svg", "template"}
+
+    def __init__(self):
+        super().__init__()
+        self.parts = []
+        self._ignored_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() in self._ignored_tags:
+            self._ignored_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag.lower() in self._ignored_tags and self._ignored_depth:
+            self._ignored_depth -= 1
+
+    def handle_data(self, data):
+        if not self._ignored_depth:
+            self.parts.append(data)
+
+    def text(self):
+        return clean_text(" ".join(self.parts))
+
+
+def _article_text_from_response(text, content_type=""):
+    """Convert an HTML response into visible text; leave text responses intact."""
+    if content_type in {"text/html", "application/xhtml+xml"} or re.search(r"<html[\s>]", text, re.I):
+        parser = _ArticleTextParser()
+        parser.feed(text)
+        text = parser.text()
+    if re.search(r"<!doctype\s+html|<html[\s>]", text, re.I):
+        raise ValueError("The URL did not provide readable article text.")
+    return text
 
 
 def _auth_response(success, message=None, user=None):
@@ -254,7 +310,7 @@ def _record_from_analysis(article_text, headline, analysis, risk_level=None):
 
 
 def _save_analysis_record(article_text, headline, analysis):
-    risk_level = classify_risk(
+    risk_level = calculate_risk_level(
         analysis.get("trust_score", 0),
         analysis.get("bias_score", 0),
         analysis.get("clickbait_score", 0),
@@ -262,8 +318,58 @@ def _save_analysis_record(article_text, headline, analysis):
         analysis.get("ai_probability", 0),
     )
     analysis["risk_level"] = risk_level
-    insert_analysis(_record_from_analysis(article_text, headline, analysis, risk_level))
+    analysis_id = insert_analysis(_record_from_analysis(article_text, headline, analysis, risk_level))
+    analysis["id"] = analysis_id
     return analysis
+
+
+def _read_url_text(url_value):
+    if not url_value:
+        raise ValueError("URL is required.")
+
+    raw_url = url_value.strip()
+    if raw_url.startswith("data:"):
+        header, _, payload = raw_url.partition(",")
+        if not payload:
+            raise ValueError("The provided data URL is empty.")
+        if ";base64" in header.lower():
+            try:
+                text = base64.b64decode(payload).decode("utf-8", errors="replace")
+            except Exception as exc:
+                raise ValueError("The provided data URL could not be decoded.") from exc
+        else:
+            text = payload
+        return _article_text_from_response(text, header.split(";", 1)[0].replace("data:", ""))
+
+    parsed = urlparse(raw_url)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError("Please enter a valid URL.")
+
+    req = Request(raw_url, headers={"User-Agent": "TrustLens/1.0"})
+    with urlopen(req, timeout=15) as response:
+        charset = response.headers.get_content_charset() or "utf-8"
+        body = response.read()
+        text = body.decode(charset, errors="replace")
+        content_type = response.headers.get_content_type()
+        return _article_text_from_response(text, content_type)
+
+
+def _read_uploaded_text(file_storage):
+    if file_storage is None:
+        raise ValueError("Please choose a file to upload.")
+
+    raw = file_storage.read()
+    if not raw:
+        raise ValueError("The uploaded file is empty.")
+
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("utf-8", errors="replace")
+
+    if not text.strip():
+        raise ValueError("The uploaded file does not contain readable text.")
+    return text
 
 
 @app.route("/")
@@ -277,7 +383,7 @@ def index():
 @login_required
 def dashboard():
     records = fetch_all_analyses()
-    summary = build_dashboard_summary(records)
+    summary = build_dashboard_summary_v2(records)
     return render_template("dashboard.html", dashboard_data=summary)
 
 
@@ -285,30 +391,50 @@ def dashboard():
 @login_required
 def analyze():
     article_text = ""
+    source_type = request.form.get("source_type") or "text"
+    url_value = ""
     analysis = None
     error = None
 
     if request.method == "POST":
         if request.is_json:
             payload = request.get_json(silent=True) or {}
+            source_type = payload.get("source_type") or "text"
             article_text = payload.get("article_text") or payload.get("text") or ""
+            url_value = payload.get("url") or ""
         else:
             article_text = request.form.get("article_text") or request.form.get("text") or ""
+            url_value = request.form.get("url") or ""
+            source_type = request.form.get("source_type") or "text"
 
-        article_text = clean_text(article_text)
-        if not article_text:
-            error = "Article text is required."
-        else:
-            try:
+        try:
+            if source_type == "url":
+                article_text = _read_url_text(url_value)
+            elif source_type == "file":
+                article_text = _read_uploaded_text(request.files.get("source_file"))
+            else:
+                article_text = article_text or ""
+
+            article_text = clean_text(article_text)
+            if not article_text:
+                error = "Article text is required."
+            else:
                 analysis = analyze_news(article_text)
                 analysis = _save_analysis_record(article_text, None, analysis)
-            except ValueError as exc:
-                error = str(exc)
+        except ValueError as exc:
+            error = str(exc)
 
         if request.is_json:
             return jsonify(_json_response(success=error is None, data=analysis, error=error))
 
-    return render_template("analyze.html", article_text=article_text, analysis=analysis, error=error)
+    return render_template(
+        "analyze.html",
+        article_text=article_text,
+        analysis=analysis,
+        error=error,
+        source_type=source_type,
+        url_value=url_value,
+    )
 
 
 @app.route("/history")
@@ -395,7 +521,7 @@ def statistics():
     records = fetch_all_analyses()
     if not records:
         return render_template("statistics.html", stats=None)
-    stats = build_statistics_payload(records)
+    stats = build_statistics_payload_v2(records)
     return render_template("statistics.html", stats=stats)
 
 
@@ -405,7 +531,7 @@ def trends():
     records = fetch_all_analyses()
     if not records:
         return render_template("trends.html", trend_data=None)
-    trend_data = build_trends_payload(records)
+    trend_data = build_trends_payload_v2(records)
     return render_template("trends.html", trend_data=trend_data)
 
 
@@ -436,6 +562,151 @@ def profile():
         analysis_count=len(records),
         recent_analysis=records[:3] if records else [],
     )
+
+
+@app.route("/article/<int:analysis_id>")
+@login_required
+def article_report(analysis_id):
+    """
+    Displays detailed Article Intelligence Report for a specific analysis.
+    """
+    records = fetch_all_analyses()
+    analysis_record = None
+    for r in records:
+        if r.get("id") == analysis_id:
+            analysis_record = r
+            break
+    
+    if not analysis_record:
+        return redirect(url_for("history"))
+    
+    # Generate intelligent summaries
+    intelligence_summary = generate_intelligence_summary(analysis_record, analysis_record.get("article_text"))
+    why_flagged = generate_why_flagged_summary(analysis_record)
+    recommended_action = generate_recommended_action(analysis_record.get("risk_level", "LOW"))
+    trust_interpretation = get_trust_score_interpretation(analysis_record.get("trust_score", 0))
+    
+    report_data = {
+        "analysis": analysis_record,
+        "intelligence_summary": intelligence_summary,
+        "why_flagged": why_flagged,
+        "recommended_action": recommended_action,
+        "trust_interpretation": trust_interpretation,
+        "timestamp_formatted": format_date_short(analysis_record.get("timestamp", "")),
+    }
+    
+    return render_template("article_report.html", report=report_data)
+
+
+@app.route("/compare")
+@login_required
+def compare():
+    """
+    Article comparison interface.
+    Shows the comparison workflow and interface for selecting articles.
+    """
+    records = fetch_all_analyses()
+    
+    if not records or len(records) < 2:
+        return render_template("compare.html", compare_data={"empty_state": True, "articles": []})
+    
+    return render_template("compare.html", compare_data={
+        "empty_state": False,
+        "articles": records[:20],  # Show recent 20 for selection
+        "total_available": len(records),
+    })
+
+
+@app.route("/api/compare", methods=["POST"])
+@login_required
+def api_compare():
+    """
+    API endpoint for comparing two articles.
+    """
+    payload = request.get_json(silent=True) or {}
+    try:
+        article_id_1 = int(payload.get("article_id_1", 0))
+        article_id_2 = int(payload.get("article_id_2", 0))
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Invalid article IDs"})
+    
+    if not article_id_1 or not article_id_2:
+        return jsonify({"success": False, "error": "Two article IDs required"})
+    
+    records = fetch_all_analyses()
+    article1 = None
+    article2 = None
+    
+    for r in records:
+        if r.get("id") == article_id_1:
+            article1 = r
+        if r.get("id") == article_id_2:
+            article2 = r
+    
+    if not article1 or not article2:
+        return jsonify({"success": False, "error": "One or both articles not found"})
+    
+    comparison = {
+        "article_1": {
+            "id": article1.get("id"),
+            "headline": article1.get("headline", "")[:100],
+            "topic": article1.get("topic", "General"),
+            "trust_score": article1.get("trust_score", 0),
+            "bias_score": article1.get("bias_score", 0),
+            "ai_probability": article1.get("ai_probability", 0),
+            "headline_score": article1.get("headline_score", 50),
+            "risk_level": article1.get("risk_level", "LOW"),
+            "timestamp": format_date_short(article1.get("timestamp", "")),
+        },
+        "article_2": {
+            "id": article2.get("id"),
+            "headline": article2.get("headline", "")[:100],
+            "topic": article2.get("topic", "General"),
+            "trust_score": article2.get("trust_score", 0),
+            "bias_score": article2.get("bias_score", 0),
+            "ai_probability": article2.get("ai_probability", 0),
+            "headline_score": article2.get("headline_score", 50),
+            "risk_level": article2.get("risk_level", "LOW"),
+            "timestamp": format_date_short(article2.get("timestamp", "")),
+        },
+        "summary": _generate_comparison_summary(article1, article2),
+    }
+    
+    return jsonify({"success": True, "data": comparison})
+
+
+def _generate_comparison_summary(article1: dict, article2: dict) -> str:
+    """Generates a summary comparing two articles."""
+    trust_diff = article1.get("trust_score", 0) - article2.get("trust_score", 0)
+    bias_diff = article1.get("bias_score", 0) - article2.get("bias_score", 0)
+    ai_diff = article1.get("ai_probability", 0) - article2.get("ai_probability", 0)
+    
+    parts = []
+    
+    if trust_diff > 10:
+        parts.append("Article A has significantly higher credibility signals")
+    elif trust_diff < -10:
+        parts.append("Article B has significantly higher credibility signals")
+    elif trust_diff > 0:
+        parts.append("Article A has slightly higher credibility")
+    elif trust_diff < 0:
+        parts.append("Article B has slightly higher credibility")
+    
+    if bias_diff > 20:
+        parts.append("and notably lower bias")
+    elif bias_diff < -20:
+        parts.append("and notably higher bias")
+    
+    if ai_diff > 20:
+        parts.append("with lower AI-writing indicators")
+    elif ai_diff < -20:
+        parts.append("with higher AI-writing indicators")
+    
+    if not parts:
+        return "The two articles show similar signal profiles."
+    
+    summary = ". ".join(parts) + "."
+    return summary
 
 
 if __name__ == "__main__":

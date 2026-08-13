@@ -43,12 +43,46 @@ def init_db():
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS saved_reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                analysis_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                report_name TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                notes TEXT,
+                FOREIGN KEY (analysis_id) REFERENCES analyses(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+            """
+        )
+        conn.commit()
+
+
+def recalculate_risk_levels():
+    """Bring saved records in line with the current, corroborated risk rules."""
+    from services.enhanced_analytics import calculate_risk_level
+
+    with closing(get_connection()) as conn:
+        rows = conn.execute(
+            "SELECT id, trust_score, bias_score, headline_score, ai_probability FROM analyses"
+        ).fetchall()
+        for row in rows:
+            risk_level = calculate_risk_level(
+                row["trust_score"] or 0,
+                row["bias_score"] or 0,
+                0,  # Historic records do not retain the clickbait component.
+                row["headline_score"] if row["headline_score"] is not None else 50,
+                row["ai_probability"] or 0,
+            )
+            conn.execute("UPDATE analyses SET risk_level = ? WHERE id = ?", (risk_level, row["id"]))
         conn.commit()
 
 
 def insert_analysis(record):
     with closing(get_connection()) as conn:
-        conn.execute(
+        cursor = conn.execute(
             """
             INSERT INTO analyses (
                 article_text, headline, timestamp, trust_score, fake_probability,
@@ -70,6 +104,7 @@ def insert_analysis(record):
             ),
         )
         conn.commit()
+        return cursor.lastrowid
 
 
 def fetch_all_analyses():
@@ -131,3 +166,66 @@ def get_user_by_id(user_id):
     with closing(get_connection()) as conn:
         row = conn.execute("SELECT * FROM users WHERE id = ? LIMIT 1", (user_id,)).fetchone()
         return dict(row) if row else None
+
+
+def save_report(analysis_id, user_id, report_name, notes=None):
+    """Save a report by linking an analysis to a user with a custom name."""
+    with closing(get_connection()) as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO saved_reports (analysis_id, user_id, report_name, notes)
+            VALUES (?, ?, ?, ?)
+            """,
+            (analysis_id, user_id, report_name, notes),
+        )
+        conn.commit()
+        return cursor.lastrowid
+
+
+def get_saved_reports_for_user(user_id):
+    """Fetch all saved reports for a given user."""
+    with closing(get_connection()) as conn:
+        rows = conn.execute(
+            """
+            SELECT sr.id, sr.analysis_id, sr.report_name, sr.created_at, sr.notes,
+                   a.headline, a.topic, a.trust_score, a.risk_level
+            FROM saved_reports sr
+            JOIN analyses a ON sr.analysis_id = a.id
+            WHERE sr.user_id = ?
+            ORDER BY sr.created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def get_saved_report(report_id, user_id):
+    """Fetch a specific saved report if it belongs to the user."""
+    with closing(get_connection()) as conn:
+        row = conn.execute(
+            """
+            SELECT sr.id, sr.analysis_id, sr.report_name, sr.created_at, sr.notes,
+                   a.*
+            FROM saved_reports sr
+            JOIN analyses a ON sr.analysis_id = a.id
+            WHERE sr.id = ? AND sr.user_id = ?
+            """,
+            (report_id, user_id),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def delete_saved_report(report_id, user_id):
+    """Delete a saved report if it belongs to the user."""
+    with closing(get_connection()) as conn:
+        # Check if report belongs to user first
+        row = conn.execute(
+            "SELECT id FROM saved_reports WHERE id = ? AND user_id = ?",
+            (report_id, user_id),
+        ).fetchone()
+        if row:
+            conn.execute("DELETE FROM saved_reports WHERE id = ?", (report_id,))
+            conn.commit()
+            return True
+        return False
+

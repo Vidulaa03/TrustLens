@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Article Intelligence Report{% endblock %}
+{% block page_title %}Article Intelligence Report{% endblock %}
+
+{% block content %}
+  <section class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+    <div>
+      <h1>Article Intelligence Report</h1>
+      <p>Comprehensive analysis showing credibility assessment, detected signals, and recommended actions.</p>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="secondary-button" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+      <button class="primary-button" onclick="window.location.href='/history'"><i class="fa-solid fa-arrow-left"></i> Back</button>
+    </div>
+  </section>
+
+  <!-- Trust Score Summary Card -->
+  <div class="panel" style="max-width: 980px; margin-bottom: 20px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; padding:20px;">
+      
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          Trust Score
+          <span class="tooltip-icon" data-tooltip="Composite score: ML model + bias signals + sentiment analysis"></span>
+        </div>
+        <div style="font-size:2.8rem; font-weight:700; color:var(--ink); letter-spacing:-0.03em;">
+          {{ report.analysis.trust_score }}
+        </div>
+        <div style="font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--brand); font-weight:700; margin-top:4px;">/ 100</div>
+        <div style="margin-top:10px; font-size:0.9rem; color:var(--ink-soft);">
+          {{ report.trust_interpretation }}
+        </div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          Risk Level
+          <span class="tooltip-icon" data-tooltip="Determined by trust score, bias, AI-writing, headline, and clickbait thresholds"></span>
+        </div>
+        {% if report.analysis.risk_level == "HIGH" %}
+          <div style="font-size:1.6rem; font-weight:700; color:#dc2626;">
+            <i class="fa-solid fa-triangle-exclamation"></i><br>HIGH RISK
+          </div>
+        {% elif report.analysis.risk_level == "MEDIUM" %}
+          <div style="font-size:1.6rem; font-weight:700; color:#f59e0b;">
+            <i class="fa-solid fa-exclamation"></i><br>MEDIUM RISK
+          </div>
+        {% else %}
+          <div style="font-size:1.6rem; font-weight:700; color:#10b981;">
+            <i class="fa-solid fa-circle-check"></i><br>LOW RISK
+          </div>
+        {% endif %}
+      </div>
+
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">Topic</div>
+        <div style="font-size:1.3rem; font-weight:700; color:var(--ink);">{{ report.analysis.topic }}</div>
+        <div style="margin-top:10px; font-size:0.85rem; color:var(--ink-soft);">Classification</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="font-size:0.75rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">AI-Writing Likelihood</div>
+        <div style="font-size:1.6rem; font-weight:700; color:var(--brand);">{{ report.analysis.ai_probability }}%</div>
+        <div style="margin-top:10px; font-size:0.85rem; color:var(--ink-soft);">Probabilistic assessment</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Signal Summary -->
+  <div class="panel" style="max-width: 980px; margin-bottom: 20px;">
+    <div style="padding:20px; border-bottom:1px solid rgba(14,27,30,0.08);">
+      <h3 style="margin:0 0 16px 0; font-size:1.1rem; font-weight:700;">Signal Summary</h3>
+      <p style="margin:0; color:var(--ink-soft); font-size:0.9rem;">Detected indicators from content analysis</p>
+    </div>
+    
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; padding:20px;">
+      
+      <div style="border:1px solid rgba(14,27,30,0.08); border-radius:10px; padding:14px; text-align:center;">
+        <div style="font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          Credibility
+          <span class="tooltip-icon" data-tooltip="TF-IDF + Logistic Regression model trained on news corpus"></span>
+        </div>
+        <div style="font-size:1.8rem; font-weight:700; color:var(--brand);">{{ report.analysis.trust_score }}%</div>
+        <div style="margin-top:6px; font-size:0.75rem; color:var(--ink-soft);">Model assessment</div>
+      </div>
+
+      <div style="border:1px solid rgba(14,27,30,0.08); border-radius:10px; padding:14px; text-align:center;">
+        <div style="font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          Bias Detection
+          <span class="tooltip-icon" data-tooltip="Detects emotional language, one-sided arguments, political framing"></span>
+        </div>
+        <div style="font-size:1.8rem; font-weight:700; color:{% if report.analysis.bias_score > 65 %}#dc2626{% elif report.analysis.bias_score > 45 %}#f59e0b{% else %}#10b981{% endif %};">{{ report.analysis.bias_score|int }}%</div>
+        <div style="margin-top:6px; font-size:0.75rem; color:var(--ink-soft);">Language patterns</div>
+      </div>
+
+      <div style="border:1px solid rgba(14,27,30,0.08); border-radius:10px; padding:14px; text-align:center;">
+        <div style="font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          AI-Writing Signals
+          <span class="tooltip-icon" data-tooltip="Probability estimate based on sentence structure and word choices"></span>
+        </div>
+        <div style="font-size:1.8rem; font-weight:700; color:{% if report.analysis.ai_probability > 75 %}#3b82f6{% elif report.analysis.ai_probability > 55 %}#f5b942{% else %}#10b981{% endif %};">{{ report.analysis.ai_probability|int }}%</div>
+        <div style="margin-top:6px; font-size:0.75rem; color:var(--ink-soft);">Probabilistic</div>
+      </div>
+
+      <div style="border:1px solid rgba(14,27,30,0.08); border-radius:10px; padding:14px; text-align:center;">
+        <div style="font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          Headline Consistency
+          <span class="tooltip-icon" data-tooltip="Measures overlap between headline and article body content"></span>
+        </div>
+        <div style="font-size:1.8rem; font-weight:700; color:{% if report.analysis.headline_score > 75 %}#10b981{% elif report.analysis.headline_score > 50 %}#f5b942{% else %}#dc2626{% endif %};">{{ report.analysis.headline_score|int }}%</div>
+        <div style="margin-top:6px; font-size:0.75rem; color:var(--ink-soft);">Body alignment</div>
+      </div>
+
+      <div style="border:1px solid rgba(14,27,30,0.08); border-radius:10px; padding:14px; text-align:center;">
+        <div style="font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          Emotional Language
+          <span class="tooltip-icon" data-tooltip="Detects sensational words and high-impact emotional triggers"></span>
+        </div>
+        <div style="font-size:1.8rem; font-weight:700; color:{% if report.analysis.emotional_score > 60 %}#dc2626{% elif report.analysis.emotional_score > 30 %}#f5b942{% else %}#10b981{% endif %};">{{ report.analysis.emotional_score|int }}%</div>
+        <div style="margin-top:6px; font-size:0.75rem; color:var(--ink-soft);">Detected</div>
+      </div>
+
+      <div style="border:1px solid rgba(14,27,30,0.08); border-radius:10px; padding:14px; text-align:center;">
+        <div style="font-size:0.7rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700; margin-bottom:8px;">
+          Clickbait Potential
+          <span class="tooltip-icon" data-tooltip="Analyzes headline sensationalism and reader-bait patterns"></span>
+        </div>
+        <div style="font-size:1.8rem; font-weight:700; color:{% if report.analysis.clickbait_score > 65 %}#dc2626{% elif report.analysis.clickbait_score > 35 %}#f5b942{% else %}#10b981{% endif %};">{{ report.analysis.clickbait_score|int }}%</div>
+        <div style="margin-top:6px; font-size:0.75rem; color:var(--ink-soft);">Detection</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Intelligence Summary -->
+  <div class="panel" style="max-width: 980px; margin-bottom: 20px;">
+    <div style="padding:20px; border-bottom:1px solid rgba(14,27,30,0.08);">
+      <h3 style="margin:0 0 6px 0; font-size:1.1rem; font-weight:700;">Intelligence Summary</h3>
+    </div>
+    <div style="padding:20px; color:var(--ink-soft); font-size:0.95rem; line-height:1.7;">
+      {{ report.intelligence_summary }}
+    </div>
+  </div>
+
+  <!-- Why Was This Flagged -->
+  <div class="panel" style="max-width: 980px; margin-bottom: 20px;">
+    <div style="padding:20px; border-bottom:1px solid rgba(14,27,30,0.08);">
+      <h3 style="margin:0 0 6px 0; font-size:1.1rem; font-weight:700;">
+        {% if report.analysis.risk_level == "HIGH" %}
+          Why This Was Flagged as High Risk
+        {% elif report.analysis.risk_level == "MEDIUM" %}
+          Risk Signals Detected
+        {% else %}
+          Low-Risk Assessment
+        {% endif %}
+      </h3>
+      <p style="margin:6px 0 0 0; color:var(--muted); font-size:0.85rem;">Concrete measurable indicators</p>
+    </div>
+    
+    <div style="padding:20px;">
+      {% if report.why_flagged %}
+        <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px;">
+          {% for signal in report.why_flagged %}
+            <li style="display:flex; align-items:flex-start; gap:10px;">
+              <span style="color:{% if report.analysis.risk_level == 'HIGH' %}#dc2626{% elif report.analysis.risk_level == 'MEDIUM' %}#f59e0b{% else %}#10b981{% endif %}; font-weight:700; margin-top:2px;">●</span>
+              <span style="color:var(--ink-soft); font-size:0.9rem;">{{ signal }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Recommended Action -->
+  <div class="panel" style="max-width: 980px; margin-bottom: 20px; border-left:4px solid {% if report.analysis.risk_level == 'HIGH' %}#dc2626{% elif report.analysis.risk_level == 'MEDIUM' %}#f59e0b{% else %}#10b981{% endif %};">
+    <div style="padding:20px; border-bottom:1px solid rgba(14,27,30,0.08);">
+      <h3 style="margin:0; font-size:1.1rem; font-weight:700;">
+        <i class="fa-solid fa-lightbulb"></i> Recommended Action
+      </h3>
+    </div>
+    
+    <div style="padding:20px; color:var(--ink-soft); font-size:0.95rem; line-height:1.7;">
+      {{ report.recommended_action }}
+    </div>
+  </div>
+
+  <!-- Methodology Note -->
+  <div style="max-width: 980px; margin-top: 30px; padding:16px; background:rgba(43,183,163,0.06); border:1px solid rgba(43,183,163,0.12); border-radius:10px; color:var(--ink-soft); font-size:0.85rem; line-height:1.6;">
+    <strong>Methodology Note:</strong> This report combines machine learning credibility assessment (TF-IDF + Logistic Regression trained on news classification), linguistic pattern analysis, and statistical signal detection. AI-writing detection is probabilistic and should not be treated as definitive proof of authorship. All scores are relative indicators intended to support human editorial decision-making.
+  </div>
+
+  <div style="max-width: 980px; margin-top: 14px; text-align:center; color:var(--muted); font-size:0.8rem;">
+    Analysis completed: {{ report.timestamp_formatted }} • Analysis ID: {{ report.analysis.id }}
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Print-friendly styling
+  if (window.matchMedia) {
+    const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const printStyle = document.createElement('style');
+    printStyle.innerHTML = `
+      @media print {
+        body { background: white; }
+        .sidebar { display: none; }
+        .main-content { padding: 0; }
+        .topbar { display: none; }
+        .page-header { margin-bottom: 20px; }
+        .panel { break-inside: avoid; }
+      }
+    `;
+    document.head.appendChild(printStyle);
+  }
+</script>
+{% endblock %}

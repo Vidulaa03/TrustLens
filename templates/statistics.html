@@ -160,17 +160,17 @@
   </div>
   <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--cyan),var(--green))">
     <span class="card-icon">🛡️</span>
-    <span class="card-label">Avg Trust Score</span>
+    <span class="card-label">Avg Trust Score <span class="tooltip-icon" data-tooltip="Composite score combining ML model + bias signals + sentiment"></span></span>
     <span class="card-value counter" id="avgTrust">{{ stats.avg_trust_score }}</span>
   </div>
   <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--yellow),var(--red))">
     <span class="card-icon">⚖️</span>
-    <span class="card-label">Avg Bias Score</span>
+    <span class="card-label">Avg Bias Score <span class="tooltip-icon" data-tooltip="Detects emotional language, one-sided arguments, political framing"></span></span>
     <span class="card-value counter" id="avgBias">{{ stats.avg_bias_score }}</span>
   </div>
   <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--pink))">
     <span class="card-icon">🤖</span>
-    <span class="card-label">AI Detection Avg</span>
+    <span class="card-label">AI-Writing Likelihood <span class="tooltip-icon" data-tooltip="Probability estimate based on sentence structure and vocabulary patterns"></span></span>
     <span class="card-value counter" id="avgAI">{{ stats.avg_ai_score }}%</span>
   </div>
   <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--blue),var(--cyan))">

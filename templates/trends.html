@@ -71,7 +71,7 @@
 .ranked-list { display:flex; flex-direction:column; gap:10px; }
 .rank-item {
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   gap:14px;
   background: rgba(255,255,255,.24);
   border:1px solid rgba(16,37,43,0.08);
@@ -88,10 +88,16 @@
   display:flex; align-items:center; justify-content:center;
   font-size:.76rem; font-weight:800; flex-shrink:0;
 }
-.rank-text { flex:1; font-size:.9rem; color:#1d3940; font-weight:600; }
+.rank-text-content { flex:1; }
+.rank-headline { font-size:.9rem; color:#1d3940; font-weight:600; margin-bottom:4px; }
+.rank-signals { font-size:.75rem; color:#4d6a70; }
+.rank-signal { display:inline-block; margin-right:8px; }
 .rank-badge {
-  font-size:.7rem; font-weight:800;
+  font-size:.7rem; font-weight:800; padding:4px 8px; border-radius:6px; flex-shrink:0;
 }
+.rank-badge.high { background:rgba(239,68,68,0.2); color:#dc2626; }
+.rank-badge.medium { background:rgba(245,158,11,0.2); color:#d97706; }
+.rank-badge.low { background:rgba(34,197,94,0.2); color:#16a34a; }
 
 .anomaly-item {
   display:flex;
@@ -122,12 +128,12 @@
 {% endblock %}
 
 {% block content %}
-{% if not trend_data %}
+{% if not trend_data or trend_data.empty_state %}
 <div class="empty-state" style="margin-top: 12px; max-width: 760px;">
   <span class="empty-icon"><i class="fa-solid fa-fire-flame-curved"></i></span>
-  <h3>No trend data yet</h3>
-  <p>Once the first set of articles is analyzed, the trend intelligence panel will populate automatically.</p>
-  <button class="solid-button" onclick="window.location.href='/analyze'">Analyze Article</button>
+  <h3>Not enough activity data yet</h3>
+  <p>Analyze more content to identify usage patterns, trending topics, and risk signal trends.</p>
+  <button class="primary-button" onclick="window.location.href='/analyze'">Analyze Article</button>
 </div>
 {% else %}
 <div class="page-header">
@@ -285,35 +291,53 @@ for (let hr=0; hr<24; hr++) {
 }
 
 const heatEl = document.getElementById('heatmap');
-heatEl.innerHTML = '';
-DAYS.forEach((day, di) => {
-  const lbl = document.createElement('div');
-  lbl.className = 'day-label';
-  lbl.textContent = day;
-  heatEl.appendChild(lbl);
+if (!hmap || hmap.every(row => row.every(v => v === 0))) {
+  heatEl.innerHTML = `<div style="grid-column: 1/-1; padding:20px; text-align:center; color:var(--ink-soft);">
+    <div style="font-size:0.9rem; margin-bottom:8px;"><i class="fa-solid fa-calendar-days"></i></div>
+    <div style="font-size:0.85rem;">Not enough activity to display patterns</div>
+  </div>`;
+} else {
+  heatEl.innerHTML = '';
+  DAYS.forEach((day, di) => {
+    const lbl = document.createElement('div');
+    lbl.className = 'day-label';
+    lbl.textContent = day;
+    heatEl.appendChild(lbl);
 
-  HOURS.forEach(hr => {
-    const val = hmap[di][hr] || 0;
-    const intensity = max > 0 ? val / max : 0;
-    const cell = document.createElement('div');
-    cell.className = 'heat-cell';
-    cell.title = `${day} ${hr}:00 — ${val} analyses`;
-    const alpha = 0.08 + intensity * 0.9;
-    cell.style.background = `rgba(124,58,237,${alpha.toFixed(2)})`;
-    heatEl.appendChild(cell);
+    HOURS.forEach(hr => {
+      const val = hmap[di][hr] || 0;
+      const intensity = max > 0 ? val / max : 0;
+      const cell = document.createElement('div');
+      cell.className = 'heat-cell';
+      cell.title = `${day} ${hr}:00 — ${val} analyses`;
+      const alpha = 0.08 + intensity * 0.9;
+      cell.style.background = `rgba(124,58,237,${alpha.toFixed(2)})`;
+      heatEl.appendChild(cell);
+    });
   });
-});
+}
 
 const shEl = document.getElementById('suspiciousHeadlines');
-(trends.suspicious_headlines || []).forEach((h, i) => {
-  const riskCls = h.risk > 65 ? 'tag-red' : h.risk > 40 ? 'tag-yellow' : 'tag-green';
-  shEl.innerHTML += `
-    <div class="rank-item">
-      <div class="rank-num">${i+1}</div>
-      <div class="rank-text">${h.headline}</div>
-      <span class="rank-badge tag ${riskCls}">${h.risk}</span>
-    </div>`;
-});
+if (!trends.suspicious_headlines || trends.suspicious_headlines.length === 0) {
+  shEl.innerHTML = `<div style="color:var(--ink-soft); padding:20px; text-align:center;">
+    <div style="font-size:1.1rem; margin-bottom:6px;"><i class="fa-solid fa-check-circle"></i></div>
+    <div style="font-weight:700;">No high-risk headlines detected.</div>
+  </div>`;
+} else {
+  (trends.suspicious_headlines || []).forEach((h, i) => {
+    const riskClass = h.risk_level === 'HIGH' ? 'high' : h.risk_level === 'MEDIUM' ? 'medium' : 'low';
+    const signalsHtml = (h.signals || []).map(s => `<span class="rank-signal">• ${s}</span>`).join('');
+    shEl.innerHTML += `
+      <div class="rank-item">
+        <div class="rank-num">${i+1}</div>
+        <div class="rank-text-content">
+          <div class="rank-headline">${h.headline}</div>
+          <div class="rank-signals">${signalsHtml || '<span class="rank-signal">Risk score: ' + h.risk_score + '</span>'}</div>
+        </div>
+        <span class="rank-badge ${riskClass}">${h.risk_level}</span>
+      </div>`;
+  });
+}
 
 const aEl = document.getElementById('anomalies');
 (trends.anomalies || []).forEach(a => {
