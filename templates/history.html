@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+{% block page_title %}History{% endblock %}
+
+{% block content %}
+  <section class="page-header">
+    <div>
+      <h1>Analysis History</h1>
+      <p>Review every article analysis and compare credibility, risk, and topic patterns.</p>
+    </div>
+    <a class="solid-button" href="/history/export.csv">Export CSV</a>
+  </section>
+
+  <div class="panel" style="margin-bottom: 20px;">
+    <form method="get" style="display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); align-items: end;">
+      <div>
+        <label>Search</label>
+        <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Article text...">
+      </div>
+      <div>
+        <label>Topic</label>
+        <select name="topic">
+          <option value="">All topics</option>
+          {% for topic in topics %}
+            <option value="{{ topic }}" {% if request.args.get('topic') == topic %}selected{% endif %}>{{ topic }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Risk</label>
+        <select name="risk">
+          <option value="">All risk</option>
+          {% for level in risks %}
+            <option value="{{ level }}" {% if request.args.get('risk') == level %}selected{% endif %}>{{ level }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>Minimum score</label>
+        <input type="number" name="score" min="0" max="100" value="{{ request.args.get('score', '') }}" placeholder="Score">
+      </div>
+      <div>
+        <button class="solid-button" type="submit">Apply filters</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="panel">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Article</th>
+            <th>Date</th>
+            <th>Trust</th>
+            <th>Bias</th>
+            <th>AI</th>
+            <th>Topic</th>
+            <th>Risk</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if analyses %}
+            {% for row in analyses %}
+            <tr>
+              <td>{{ (row.article_text or '')[:80] }}</td>
+              <td>{{ row.timestamp }}</td>
+              <td>{{ row.trust_score }}</td>
+              <td>{{ row.bias_score }}</td>
+              <td>{{ row.ai_probability }}</td>
+              <td>{{ row.topic or 'General' }}</td>
+              <td><span class="pill {% if row.risk_level == 'LOW' %}pill-low{% elif row.risk_level == 'MEDIUM' %}pill-medium{% else %}pill-high{% endif %}">{{ row.risk_level }}</span></td>
+              <td>
+                <a href="/history" style="color: var(--primary); margin-right: 10px;">View</a>
+                <form method="post" action="/history/delete/{{ row.id }}" style="display: inline;">
+                  <button type="submit" style="background: none; border: none; color: #fca5a5; cursor: pointer;">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="8">
+                <div class="empty-state" style="margin: 12px 0;">
+                  <span class="empty-icon"><i class="fa-solid fa-clock"></i></span>
+                  <h3>No analyses found</h3>
+                  <p>Adjust the filters or create a new analysis to populate the history.</p>
+                </div>
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

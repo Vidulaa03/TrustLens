@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+{% block title %}Statistics{% endblock %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.counter { animation: countUp .6s ease; }
+
+.page-header {
+  margin: 6px 0 22px;
+}
+.page-header h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  letter-spacing: -0.06em;
+  color: #10252b;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-header p {
+  margin: 10px 0 0;
+  color: #40575c;
+  font-size: 1.04rem;
+}
+
+.chart-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0.18));
+  border: 1px solid rgba(13, 27, 30, 0.08);
+  border-radius: 20px;
+  padding: 22px 22px 18px;
+  margin-bottom: 22px;
+  box-shadow: 0 18px 40px rgba(13, 27, 30, 0.08);
+}
+.chart-card h3 {
+  font-size: .8rem;
+  font-weight: 800;
+  color: #17363b;
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chart-card canvas {
+  display: block;
+  width: 100% !important;
+  height: 260px !important;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+@media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+.activity-table { width: 100%; border-collapse: collapse; }
+.activity-table th {
+  text-align: left;
+  padding: 12px 14px;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: #49676b;
+  border-bottom: 1px solid rgba(16,37,43,0.1);
+}
+.activity-table td {
+  padding: 12px 14px;
+  font-size: .88rem;
+  color: #213d42;
+  border-bottom: 1px solid rgba(16,37,43,0.07);
+}
+.activity-table tr:hover td { background: rgba(255,255,255,0.04); }
+
+.card-icon {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.34);
+  border: 1px solid rgba(16, 37, 43, 0.08);
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 14px 28px rgba(13, 27, 30, 0.06);
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--card-accent, linear-gradient(90deg, #2bb7a3, #3b82f6));
+}
+
+.card-label {
+  display: block;
+  color: #4a6368;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .7rem;
+  font-weight: 700;
+}
+.card-value {
+  display: block;
+  margin-top: 10px;
+  color: #0f252b;
+  font-size: clamp(1.9rem, 2vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border: 1px solid transparent;
+}
+.tag-green { background: rgba(34,197,94,0.12); color: #166534; border-color: rgba(34,197,94,0.18); }
+.tag-yellow { background: rgba(234,179,8,0.12); color: #8a5b00; border-color: rgba(234,179,8,0.18); }
+.tag-red { background: rgba(239,68,68,0.12); color: #991b1b; border-color: rgba(239,68,68,0.18); }
+.tag-blue { background: rgba(59,130,246,0.10); color: #1d4ed8; border-color: rgba(59,130,246,0.15); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if not stats %}
+<div class="empty-state" style="margin-top: 12px; max-width: 760px;">
+  <span class="empty-icon"><i class="fa-solid fa-chart-column"></i></span>
+  <h3>No platform statistics yet</h3>
+  <p>Run a few analyses to populate the TrustLens dashboard and trend intelligence.</p>
+  <button class="solid-button" onclick="window.location.href='/analyze'">Analyze Article</button>
+</div>
+{% else %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-chart-bar" style="font-size:1.6rem;"></i>  Platform Statistics</h1>
+  <p>Analytics and insights from all articles analyzed through TrustLens.</p>
+</div>
+
+<div class="cards-grid" style="grid-template-columns:repeat(auto-fit,minmax(175px,1fr))">
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--blue))">
+    <span class="card-icon">📄</span>
+    <span class="card-label">Total Articles</span>
+    <span class="card-value counter" id="totalArticles">{{ stats.total_articles }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--cyan),var(--green))">
+    <span class="card-icon">🛡️</span>
+    <span class="card-label">Avg Trust Score <span class="tooltip-icon" data-tooltip="Composite score combining ML model + bias signals + sentiment"></span></span>
+    <span class="card-value counter" id="avgTrust">{{ stats.avg_trust_score }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--yellow),var(--red))">
+    <span class="card-icon">⚖️</span>
+    <span class="card-label">Avg Bias Score <span class="tooltip-icon" data-tooltip="Detects emotional language, one-sided arguments, political framing"></span></span>
+    <span class="card-value counter" id="avgBias">{{ stats.avg_bias_score }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--pink))">
+    <span class="card-icon">🤖</span>
+    <span class="card-label">AI-Writing Likelihood <span class="tooltip-icon" data-tooltip="Probability estimate based on sentence structure and vocabulary patterns"></span></span>
+    <span class="card-value counter" id="avgAI">{{ stats.avg_ai_score }}%</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--blue),var(--cyan))">
+    <span class="card-icon">🏷️</span>
+    <span class="card-label">Top Topic</span>
+    <span class="card-value" style="font-size:1.2rem;" id="topTopic">{{ stats.top_topic }}</span>
+  </div>
+  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--green),var(--cyan))">
+    <span class="card-icon">📅</span>
+    <span class="card-label">Peak Day</span>
+    <span class="card-value" style="font-size:1.2rem;" id="peakDay">{{ stats.peak_day }}</span>
+  </div>
+</div>
+
+<div class="charts-grid">
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-chart-line"></i> Trust Score Over Time</h3>
+    <canvas id="trustChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-chart-pie"></i> Topic Distribution</h3>
+    <canvas id="topicChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-chart-simple"></i> Bias Score Trend</h3>
+    <canvas id="biasChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3><i class="fa-solid fa-robot"></i> AI Detection Rate</h3>
+    <canvas id="aiChart" height="220"></canvas>
+  </div>
+</div>
+
+<div class="chart-card">
+  <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h3>
+  {% if stats.recent_activity %}
+  <table class="activity-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Snippet</th>
+        <th>Trust</th>
+        <th>Bias</th>
+        <th>Topic</th>
+        <th>AI%</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in stats.recent_activity %}
+      <tr>
+        <td>{{ row.date }}</td>
+        <td>{{ row.snippet }}</td>
+        <td><span class="tag {% if row.trust > 65 %}tag-green{% elif row.trust > 40 %}tag-yellow{% else %}tag-red{% endif %}">{{ row.trust }}</span></td>
+        <td><span class="tag {% if row.bias < 35 %}tag-green{% elif row.bias < 65 %}tag-yellow{% else %}tag-red{% endif %}">{{ row.bias }}</span></td>
+        <td><span class="tag tag-blue">{{ row.topic }}</span></td>
+        <td>{{ row.ai_pct }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-muted);text-align:center;padding:30px;">No analysis history yet. Start analyzing articles!</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if stats %}
+<script>
+const chartDefaults = {
+  responsive: true,
+  maintainAspectRatio: false,
+  color: '#204149',
+  plugins: {
+    legend: {
+      labels: {
+        color: '#1e3d43',
+        usePointStyle: true,
+        pointStyle: 'circle',
+        boxWidth: 10,
+        boxHeight: 10,
+        padding: 14,
+        font: { size: 11, weight: 700 }
+      }
+    }
+  },
+  scales: {
+    x: {
+      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
+      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
+      border: { display: false }
+    },
+    y: {
+      min: 0,
+      max: 100,
+      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
+      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
+      border: { display: false }
+    }
+  }
+};
+
+const chartData = {{ stats.chart_data | tojson }};
+
+new Chart(document.getElementById('trustChart'), {
+  type: 'line',
+  data: {
+    labels: chartData.dates,
+    datasets: [{
+      label: 'Trust Score',
+      data: chartData.trust_scores,
+      borderColor: '#7c3aed',
+      backgroundColor: 'rgba(124,58,237,.12)',
+      borderWidth: 3,
+      tension: .38,
+      fill: true,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#a855f7',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2
+    }]
+  },
+  options: { ...chartDefaults }
+});
+
+const topicColors = ['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#ec4899','#f97316','#ef4444'];
+new Chart(document.getElementById('topicChart'), {
+  type: 'doughnut',
+  data: {
+    labels: chartData.topic_labels,
+    datasets: [{
+      data: chartData.topic_counts,
+      backgroundColor: topicColors,
+      borderColor: '#edf7f8',
+      borderWidth: 3,
+      hoverOffset: 12,
+      weight: 1
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '58%',
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: {
+          color: '#1e3d43',
+          usePointStyle: true,
+          pointStyle: 'circle',
+          boxWidth: 10,
+          boxHeight: 10,
+          padding: 14,
+          font: { size: 11, weight: 700 }
+        }
+      }
+    }
+  }
+});
+
+new Chart(document.getElementById('biasChart'), {
+  type: 'bar',
+  data: {
+    labels: chartData.dates,
+    datasets: [{
+      label: 'Bias Score',
+      data: chartData.bias_scores,
+      backgroundColor: chartData.bias_scores.map(v =>
+        v > 65 ? 'rgba(239,68,68,.82)' : v > 35 ? 'rgba(234,179,8,.82)' : 'rgba(34,197,94,.82)'),
+      borderRadius: 6,
+      borderSkipped: false,
+      borderWidth: 0,
+      maxBarThickness: 26,
+      barPercentage: 0.72,
+      categoryPercentage: 0.8
+    }]
+  },
+  options: { ...chartDefaults }
+});
+
+new Chart(document.getElementById('aiChart'), {
+  type: 'line',
+  data: {
+    labels: chartData.dates,
+    datasets: [{
+      label: 'AI Probability %',
+      data: chartData.ai_scores,
+      borderColor: '#ec4899',
+      backgroundColor: 'rgba(236,72,153,.12)',
+      borderWidth: 3,
+      tension: .3,
+      fill: true,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#f472b6',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      cubicInterpolationMode: 'monotone'
+    }]
+  },
+  options: { ...chartDefaults }
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+  <section class="page-header">
+    <div>
+      <h1>Settings</h1>
+      <p>Manage the workspace, defaults, and analysis controls.</p>
+    </div>
+  </section>
+
+  <div class="settings-grid">
+    <div class="settings-block">
+      <h3>Workspace</h3>
+      <div class="grid-2">
+        <div>
+          <label>Workspace name</label>
+          <input type="text" value="TrustLens Workspace">
+        </div>
+        <div>
+          <label>Industry</label>
+          <select>
+            <option>Research</option>
+            <option>Media</option>
+            <option>Education</option>
+            <option>Corporate Intelligence</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top: 16px;">
+        <label>Default analysis settings</label>
+        <input type="text" value="Credibility, bias, topic, and AI-writing overview">
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <h3>Preferences</h3>
+      <div class="grid-2">
+        <div>
+          <label>Theme</label>
+          <select>
+            <option>Dark</option>
+            <option>Light</option>
+          </select>
+        </div>
+        <div>
+          <label>Default landing page</label>
+          <select>
+            <option>Dashboard</option>
+            <option>Analyze</option>
+            <option>History</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <h3>Analysis</h3>
+      <div class="toggle-row">
+        <div>
+          <strong>Bias analysis</strong>
+          <div class="muted-copy">Assess emotional or opinionated framing.</div>
+        </div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <strong>AI-writing signals</strong>
+          <div class="muted-copy">Estimate language patterns associated with AI-assisted writing.</div>
+        </div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <strong>Topic classification</strong>
+          <div class="muted-copy">Assign a primary and secondary subject to content.</div>
+        </div>
+        <label class="switch"><input type="checkbox" checked><span class="slider"></span></label>
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <h3>Data</h3>
+      <div class="muted-copy" style="margin-bottom: 14px;">Clear all analysis history from the local database. This action cannot be undone.</div>
+      <form method="post">
+        <input type="hidden" name="action" value="clear_history">
+        <button class="solid-button" type="submit" style="background: #ef4444; box-shadow: none;">Clear analysis history</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

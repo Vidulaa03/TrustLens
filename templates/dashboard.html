@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Overview{% endblock %}
+
+{% block content %}
+  {% if not dashboard_data or dashboard_data.articles_analyzed == 0 %}
+    <div class="empty-state" style="margin-top: 12px; max-width: 760px;">
+      <span class="empty-icon"><i class="fa-solid fa-chart-column"></i></span>
+      <h3>No analyses yet</h3>
+      <p>Analyze your first article to start building your intelligence dashboard.</p>
+      <button class="primary-button" onclick="window.location.href='/analyze'">Analyze Article</button>
+    </div>
+  {% else %}
+    <section class="page-header" style="display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+      <div>
+        <h1>Content Intelligence Overview</h1>
+        <p>Monitor credibility, bias, topic patterns and content risk across your newsroom workflow.</p>
+      </div>
+      <button class="primary-button" onclick="window.location.href='/analyze'">+ Analyze Article</button>
+    </section>
+
+    <section class="cards-grid">
+      <div class="stat-card">
+        <div class="label"><span>Articles analyzed</span><span><i class="fa-solid fa-file-lines"></i></span></div>
+        <div class="value">{{ dashboard_data.articles_analyzed }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label"><span>Avg trust score <span class="tooltip-icon" data-tooltip="Composite score combining ML model + bias signals + sentiment"></span></span><span><i class="fa-solid fa-shield-heart"></i></span></div>
+        <div class="value">{{ dashboard_data.average_trust_score }}</div>
+        <div style="font-size: 0.75rem; color: var(--ink-soft); margin-top: 6px;">{{ dashboard_data.average_trust_interpretation }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="label"><span>Avg bias score <span class="tooltip-icon" data-tooltip="Detects emotional language, one-sided arguments, political framing"></span></span><span><i class="fa-solid fa-scale-balanced"></i></span></div>
+        <div class="value">{{ dashboard_data.average_bias|int }}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="label"><span>AI-writing likelihood <span class="tooltip-icon" data-tooltip="Probability estimate based on sentence structure and vocabulary patterns"></span></span><span><i class="fa-solid fa-robot"></i></span></div>
+        <div class="value">{{ dashboard_data.average_ai_probability|int }}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="label"><span>High-risk articles</span><span><i class="fa-solid fa-triangle-exclamation"></i></span></div>
+        <div class="value">{{ dashboard_data.high_risk_count }}</div>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Trust score over time</h3>
+          <span class="status-pill">Live</span>
+        </div>
+        <div class="chart-wrap"><canvas id="trustChart" height="180"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Content risk distribution</h3>
+          <span class="status-pill">Accurate</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:48px; color:var(--muted); font-size:0.78rem; font-weight:700;">Low</div>
+            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ dashboard_data.risk_distribution.low_percentage }}%; background:linear-gradient(90deg,#2bb7a3,#4ade80);"></span></div>
+            <strong style="min-width:45px; text-align:right;">{{ dashboard_data.risk_distribution.low_percentage }}%</strong>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:48px; color:var(--muted); font-size:0.78rem; font-weight:700;">Med</div>
+            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ dashboard_data.risk_distribution.medium_percentage }}%; background:linear-gradient(90deg,#f5b942,#f0ad4e);"></span></div>
+            <strong style="min-width:45px; text-align:right;">{{ dashboard_data.risk_distribution.medium_percentage }}%</strong>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:48px; color:var(--muted); font-size:0.78rem; font-weight:700;">High</div>
+            <div style="flex:1; height:12px; border-radius:999px; background:rgba(14,27,30,0.06); overflow:hidden; border:1px solid rgba(14,27,30,0.04);"><span style="display:block; height:100%; width:{{ dashboard_data.risk_distribution.high_percentage }}%; background:linear-gradient(90deg,#e76d64,#ce4a4a);"></span></div>
+            <strong style="min-width:45px; text-align:right;">{{ dashboard_data.risk_distribution.high_percentage }}%</strong>
+          </div>
+        </div>
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(14,27,30,0.08); font-size: 0.75rem; color: var(--muted);">
+          Total: {{ dashboard_data.risk_distribution.total_percentage }}% (Low: {{ dashboard_data.risk_distribution.low_count }}, Med: {{ dashboard_data.risk_distribution.medium_count }}, High: {{ dashboard_data.risk_distribution.high_count }})
+        </div>
+      </div>
+    </section>
+
+    <section class="two-col" style="margin-top:20px;">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Topic distribution</h3>
+          <span class="status-pill">Top topics</span>
+        </div>
+        <div class="chart-wrap"><canvas id="topicChart" height="200"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Recent activity</h3>
+          <span class="status-pill">Latest</span>
+        </div>
+        <div class="table-wrap">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:8px 6px; font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;">Topic</th>
+                <th style="text-align:left; padding:8px 6px; font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;">Trust</th>
+                <th style="text-align:left; padding:8px 6px; font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;">AI</th>
+                <th style="text-align:left; padding:8px 6px; font-size:0.74rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.08em;">Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in dashboard_data.recent_activity %}
+              <tr>
+                <td style="padding:9px 6px; border-top:1px solid rgba(14,27,30,0.06); font-size:0.82rem;">{{ row.topic or 'General' }}</td>
+                <td style="padding:9px 6px; border-top:1px solid rgba(14,27,30,0.06); font-size:0.82rem;">{{ row.trust_score }}%</td>
+                <td style="padding:9px 6px; border-top:1px solid rgba(14,27,30,0.06); font-size:0.82rem;">{{ row.ai_probability }}%</td>
+                <td style="padding:9px 6px; border-top:1px solid rgba(14,27,30,0.06); font-size:0.82rem;"><span style="display:inline-flex; padding:5px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; background: rgba(14,27,30,0.05); border:1px solid rgba(14,27,30,0.06);">{{ row.risk_level }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if dashboard_data and dashboard_data.articles_analyzed > 0 %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const trendData = {{ dashboard_data.trend_points | tojson }};
+    const labels = trendData.map(row => row.date);
+    const trust = trendData.map(row => row.trust_score);
+    const topicCounts = {{ dashboard_data.topics | tojson }};
+
+    new Chart(document.getElementById('trustChart'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Trust Score',
+          data: trust,
+          borderColor: '#1e8a85',
+          backgroundColor: 'rgba(43,183,163,0.12)',
+          borderWidth: 2,
+          pointRadius: 3,
+          fill: true,
+          tension: 0.35
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#4b5f62' }, grid: { display: false } },
+          y: { ticks: { color: '#4b5f62' }, min: 0, max: 100, grid: { color: 'rgba(14,27,30,0.07)' } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('topicChart'), {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(topicCounts),
+        datasets: [{
+          data: Object.values(topicCounts),
+          backgroundColor: ['#2bb7a3', '#5ec4b5', '#0f1720', '#f3b96d', '#3b82f6', '#a78bfa', '#f0827d'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: '#24353a', boxWidth: 10 } } }
+      }
+    });
+  </script>
+  {% endif %}
+{% endblock %}

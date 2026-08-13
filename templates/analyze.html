@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Analyze Content{% endblock %}
+{% block page_title %}Analyze Content{% endblock %}
+
+{% block content %}
+  <section class="page-header">
+    <div>
+      <h1>Analyze Content</h1>
+      <p>Evaluate an article across credibility, bias, topic, headline quality and AI-content signals.</p>
+    </div>
+  </section>
+
+  <div class="form-card">
+    <form method="post" action="/analyze" enctype="multipart/form-data" style="margin-top: 0;">
+      <div class="source-panel">
+        <label for="article_text" style="display:block; margin-bottom:10px; font-size:0.8rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); font-weight:700;">Article text</label>
+        <textarea id="article_text" name="article_text" class="editor" placeholder="Paste article text here...">{{ article_text }}</textarea>
+        <div class="input-meta">
+          <span><span id="wordCount">0</span> words</span>
+          <span><span id="charCount">0</span> characters</span>
+        </div>
+      </div>
+
+      <div class="analyze-toolbar">
+        <button class="primary-button" type="submit">Analyze Content</button>
+      </div>
+    </form>
+
+    {% if error %}
+      <div class="result-panel" style="margin-top: 16px; border-color: rgba(239,68,68,0.22); background: rgba(239,68,68,0.04);">
+        <p style="margin: 0; color: #7a1d1d;">{{ error }}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if analysis %}
+    <div class="result-panel">
+      <div class="score-row">
+        <div class="score-value">{{ analysis.trust_score }} / 100</div>
+        <div class="score-status">{{ analysis.label }} · Combined content assessment</div>
+      </div>
+
+      <div class="score-meter">
+        <div class="meter-card">
+          <div class="meter-label">Emotional tone</div>
+          <div class="meter-track"><div class="meter-fill" style="width: {{ analysis.emotional_score }}%; background: linear-gradient(90deg, #f5b942, #f07d3d);"></div></div>
+          <div class="meter-value">{{ analysis.emotional_score }}%</div>
+        </div>
+        <div class="meter-card">
+          <div class="meter-label">Political framing</div>
+          <div class="meter-track"><div class="meter-fill" style="width: {{ analysis.political_score }}%; background: linear-gradient(90deg, #3b82f6, #5ea8ff);"></div></div>
+          <div class="meter-value">{{ analysis.political_score }}%</div>
+        </div>
+        <div class="meter-card">
+          <div class="meter-label">Sensational language</div>
+          <div class="meter-track"><div class="meter-fill" style="width: {{ analysis.sensational_score }}%; background: linear-gradient(90deg, #d97706, #ef4444);"></div></div>
+          <div class="meter-value">{{ analysis.sensational_score }}%</div>
+        </div>
+        <div class="meter-card">
+          <div class="meter-label">One-sided language</div>
+          <div class="meter-track"><div class="meter-fill" style="width: {{ analysis.one_sided_score }}%; background: linear-gradient(90deg, #8b5cf6, #c084fc);"></div></div>
+          <div class="meter-value">{{ analysis.one_sided_score }}%</div>
+        </div>
+        <div class="meter-card">
+          <div class="meter-label">AI-writing likelihood</div>
+          <div class="meter-track"><div class="meter-fill" style="width: {{ analysis.ai_probability }}%; background: linear-gradient(90deg, #2bb7a3, #3b82f6);"></div></div>
+          <div class="meter-value">{{ analysis.ai_probability }}%</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; color: var(--ink-soft); font-size: 0.96rem; line-height: 1.7;">
+        <strong>Verdict:</strong> This article shows <strong>{{ analysis.risk_level.lower() }}</strong> risk overall. The combined assessment flags emotional, political, sensational, one-sided framing, and AI-writing signals as part of the same content quality review.
+      </div>
+      <div style="margin-top: 10px; color: var(--ink-soft); font-size: 0.92rem;">
+        <strong>Signal summary:</strong> {{ analysis.signals_summary }}
+      </div>
+
+      <div style="margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="/history" class="secondary-button" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa-solid fa-history"></i> View History
+        </a>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const textarea = document.getElementById('article_text');
+  const wordCount = document.getElementById('wordCount');
+  const charCount = document.getElementById('charCount');
+
+  function updateCounts() {
+    if (!textarea) return;
+    const text = textarea.value.trim();
+    const words = text ? text.split(/\s+/).length : 0;
+    wordCount.textContent = words;
+    charCount.textContent = text.length;
+  }
+
+  if (textarea) textarea.addEventListener('input', updateCounts);
+  updateCounts();
+</script>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Topic Classification{% endblock %}
+
+{% block head %}
+<style>
+/* ── Category cards grid ──────────────────────── */
+.topic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.topic-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 14px;
+  text-align: center;
+  cursor: default;
+  transition: all .3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.topic-card.primary {
+  border-color: var(--purple);
+  box-shadow: 0 0 20px rgba(124,58,237,.3);
+}
+.topic-card.secondary {
+  border-color: var(--blue);
+  box-shadow: 0 0 14px rgba(59,130,246,.2);
+}
+.topic-card.primary::before,
+.topic-card.secondary::before {
+  content: attr(data-label);
+  position: absolute;
+  top: 8px; right: 8px;
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+.topic-card.primary::before  { background:rgba(124,58,237,.3); color:var(--purple-light); }
+.topic-card.secondary::before { background:rgba(59,130,246,.3); color:var(--blue-light); }
+
+.topic-icon {
+  font-size: 2rem;
+  margin-bottom: 8px;
+  display: block;
+}
+.topic-name { font-size: .9rem; font-weight: 600; color: var(--text-primary); }
+.topic-pct  { font-size: .75rem; color: var(--text-secondary); margin-top: 4px; }
+
+/* ── Confidence bar ───────────────────────────── */
+.conf-row {
+  display: flex; align-items: center; gap: 12px;
+  margin: 8px 0;
+}
+.conf-label { width: 120px; font-size: .82rem; color: var(--text-secondary); }
+.conf-track { flex:1; height: 8px; background: rgba(255,255,255,.06); border-radius:99px; overflow:hidden; }
+.conf-fill  { height:100%; border-radius:99px; background: linear-gradient(90deg,var(--purple),var(--blue)); transition: width 1s ease; }
+.conf-pct   { width: 40px; text-align: right; font-size: .82rem; color: var(--text-primary); font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-tags" style="font-size:1.6rem;"></i>  Topic Classification Engine</h1>
+  <p>Classify any article into major categories with confidence scores and keyword extraction.</p>
+</div>
+
+<!-- Input -->
+<div class="input-card">
+  <label><i class="fa-solid fa-file-lines"></i> &nbsp;Paste Article Text</label>
+  <textarea id="articleText" placeholder="Paste your article here…"></textarea>
+  <button class="btn-analyze" id="analyzeBtn" onclick="runTopicAnalysis()">
+    <div class="spinner"></div>
+    <i class="fa-solid fa-tags btn-text"></i>
+    <span class="btn-text">Classify Topic</span>
+  </button>
+</div>
+
+<!-- Results -->
+<div class="results-section" id="results">
+
+  <!-- Primary + Secondary topic cards -->
+  <div class="section-title"><i class="fa-solid fa-bullseye"></i> Detected Topics</div>
+  <div class="topic-grid" id="topicGrid"></div>
+
+  <!-- Confidence breakdown -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-chart-bar"></i> All-Category Confidence</h3>
+    <div id="confBars"></div>
+  </div>
+
+  <!-- Keyword tags -->
+  <div class="result-panel">
+    <h3><i class="fa-solid fa-key"></i> Extracted Keywords</h3>
+    <div class="tag-list" id="keywords"></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TOPIC_META = {
+  Politics:      { icon: '🏛️', color: 'var(--purple)' },
+  Finance:       { icon: '💹', color: 'var(--green)'  },
+  Technology:    { icon: '💻', color: 'var(--cyan)'   },
+  Health:        { icon: '🏥', color: 'var(--red)'    },
+  Sports:        { icon: '⚽', color: 'var(--blue)'   },
+  Entertainment: { icon: '🎬', color: 'var(--pink)'   },
+  Education:     { icon: '📚', color: 'var(--yellow)' },
+  Crime:         { icon: '🔍', color: '#f97316'       },
+};
+
+function runTopicAnalysis() {
+  const text = document.getElementById('articleText').value.trim();
+  if (!text || text.split(' ').length < 10) {
+    alert('Please paste a longer article.');
+    return;
+  }
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.classList.add('loading');
+
+  fetch('/topic-classification', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text})
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.classList.remove('loading');
+    renderTopicResults(data);
+  })
+  .catch(() => { btn.classList.remove('loading'); alert('Classification failed. Try again.'); });
+}
+
+function renderTopicResults(d) {
+  // Topic cards — show primary + secondary prominently, rest dimmed
+  const grid = document.getElementById('topicGrid');
+  grid.innerHTML = '';
+  const sorted = Object.entries(d.scores).sort((a,b) => b[1]-a[1]);
+  sorted.forEach(([topic, pct], i) => {
+    const meta = TOPIC_META[topic] || { icon:'📰', color:'var(--purple)' };
+    const cls  = i===0 ? 'primary' : i===1 ? 'secondary' : '';
+    const lbl  = i===0 ? 'Primary' : i===1 ? 'Secondary' : '';
+    grid.innerHTML += `
+      <div class="topic-card ${cls}" data-label="${lbl}" style="${cls?'':'opacity:.45'}">
+        <span class="topic-icon">${meta.icon}</span>
+        <div class="topic-name">${topic}</div>
+        <div class="topic-pct">${pct}%</div>
+      </div>`;
+  });
+
+  // Confidence bars
+  const bars = document.getElementById('confBars');
+  bars.innerHTML = sorted.map(([topic, pct]) => `
+    <div class="conf-row">
+      <span class="conf-label">${TOPIC_META[topic]?.icon || ''} ${topic}</span>
+      <div class="conf-track"><div class="conf-fill" style="width:0%" data-target="${pct}%"></div></div>
+      <span class="conf-pct">${pct}%</span>
+    </div>`).join('');
+
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.conf-fill').forEach(el => {
+      el.style.width = el.dataset.target;
+    });
+  }, 80);
+
+  // Keywords
+  const tagColors = ['tag-purple','tag-blue','tag-cyan','tag-green','tag-yellow'];
+  document.getElementById('keywords').innerHTML = d.keywords
+    .map((kw, i) => `<span class="tag ${tagColors[i % tagColors.length]}">${kw}</span>`)
+    .join('');
+
+  document.getElementById('results').classList.add('visible');
+  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
+{% endblock %}
