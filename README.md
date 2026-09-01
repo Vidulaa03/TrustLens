@@ -1,31 +1,76 @@
-#  TrustLens
+<div align="center">
 
-## ML-Based News Credibility & Content Intelligence Platform
+# 🔎 TrustLens
 
-TrustLens is the working implementation of the research paper *“TrustLens: An Automated News Credibility Scoring System Based on Machine Learning Techniques.”*
+### ML-Based News Credibility & Content Intelligence Platform
 
-TrustLens is a Flask-based web application that analyzes news-style content using TF-IDF + Logistic Regression and linguistic heuristics to identify credibility, bias, sensationalism, AI-writing patterns, topic, and overall content risk.
+[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-2.x-black.svg)](https://flask.palletsprojects.com/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange.svg)](https://scikit-learn.org/)
 
-> TrustLens is a decision-support tool, not a fact-checking authority. Its scores identify patterns that may deserve further investigation; they do not prove whether an article is true or false.
 
-## Features
+**Analyze the signals. Investigate the story. Make the judgment.**
 
-- 🧠 **Credibility Analysis** — TF-IDF + Logistic Regression
-- 📊 **Trust Score** — 0–100 credibility-oriented score
-- ⚖️ **Bias Detection** — emotional, political, and one-sided framing
-- 🚨 **Risk Detection** — Low / Medium / High
-- 🤖 **AI-Writing Likelihood** — linguistic indicators associated with AI-assisted writing
-- 🏷️ **Topic Classification** — Politics, Finance, Technology, Health, Sports, and more
-- 📰 **Headline Consistency** — compares headline and article content
-- 📋 **Article Intelligence Reports**
-- 📈 **Statistics & Trends**
-- 🔍 **Article Comparison**
-- 🗂️ **Analysis History**
-- 🌐 **Browser-Session Storage** — history and analytics are retained only in the active browser session
+</div>
+
+---
+
+## 📖 About
+
+TrustLens is the working implementation of the research paper **"TrustLens: Machine Learning for Automated News Credibility Scoring,"** published at the **VSEARCH VIJANAN 2026 National Level Student Research Paper Conference**. It is a Flask-based web application that analyzes news-style content using **TF-IDF + Logistic Regression** and a suite of linguistic heuristics to surface credibility, bias, sensationalism, AI-writing patterns, topic classification, and overall content risk.
+
+> **Note:** TrustLens is a decision-support tool, not a fact-checking authority. Its scores identify patterns that may deserve further investigation — they do not prove whether an article is true or false.
+
+---
+
+## 📸 Demo
+
+<div align="center">
+
+### Dashboard — Bias, Risk & Recent Analyses
+<img width="1600" height="754" alt="WhatsApp Image 2026-09-01 at 10 22 43 PM" src="https://github.com/user-attachments/assets/fa733649-9524-4436-8bec-48b8a647bb85" />
+
+
+### Session Trends & Metrics Timeline
+<img width="1600" height="765" alt="WhatsApp Image 2026-09-01 at 10 22 09 PM" src="https://github.com/user-attachments/assets/b94df200-d265-4480-b68e-1b88e360dd54" />
+
+
+### Risk Level Progression & Trend Summary
+<img width="1600" height="760" alt="WhatsApp Image 2026-09-01 at 10 24 16 PM" src="https://github.com/user-attachments/assets/1281d6ec-4d2c-45f6-802f-4c6c931e8ea3" />
+
+
+### Analyze Content
+<img width="1600" height="760" alt="WhatsApp Image 2026-09-01 at 10 26 45 PM" src="https://github.com/user-attachments/assets/9c2d2688-7a21-40f5-b224-6b61da4c009c" />
+<img width="1916" height="907" alt="image" src="https://github.com/user-attachments/assets/ee2584fa-6a29-46b1-ba44-7450dff15b95" />
+
+
+
+</div>
+
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---|---|
+| 🧠 **Credibility Analysis** | TF-IDF + Logistic Regression model trained on labeled news data |
+| 📊 **Trust Score** | 0–100 credibility-oriented composite score |
+| ⚖️ **Bias Detection** | Flags emotional, political, and one-sided framing |
+| 🚨 **Risk Detection** | Classifies content as Low / Medium / High risk |
+| 🤖 **AI-Writing Likelihood** | Linguistic indicators associated with AI-assisted writing |
+| 🏷️ **Topic Classification** | Politics, Finance, Technology, Health, Sports, and more |
+| 📰 **Headline Consistency** | Compares headline framing against article content |
+| 📋 **Article Intelligence Reports** | Consolidated, human-readable analysis output |
+| 📈 **Statistics & Trends** | Aggregate insights across analyzed articles |
+| 🔍 **Article Comparison** | Side-by-side comparison of multiple articles |
+| 🗂️ **Analysis History** | Session-based history of past analyses |
+| 🌐 **Browser-Session Storage** | History and analytics persist only for the active browser session |
+
+---
 
 ## 🔬 How It Works
 
-```text
+```
 Article
    ↓
 Text Preprocessing
@@ -48,36 +93,42 @@ Intelligence Report
 Dashboard / Statistics / Trends / Comparison
 ```
 
+---
+
 ## 🧠 Machine Learning
 
 The core credibility model uses:
 
-- TF-IDF Vectorization
-- Logistic Regression
-- `dataset/news.csv`
+- **TF-IDF Vectorization** for feature extraction
+- **Logistic Regression** for classification
+- Training data: `dataset/news.csv`
 
-The model produces real/fake-news probabilities, which are combined with additional linguistic signals to generate the final assessment.
+The model produces real/fake-news probabilities, which are combined with additional linguistic signals to generate the final credibility assessment.
 
-Pre-trained model assets:
+**Pre-trained model assets:**
 
-```text
+```
 model/model.pkl
 model/tfidf.pkl
 ```
 
+---
+
 ## 🛠️ Tech Stack
 
 | Category | Technologies |
-| --- | --- |
+|---|---|
 | Backend | Python, Flask, Jinja2 |
-| ML/NLP | scikit-learn, pandas, VADER Sentiment |
-| Session storage | Browser `sessionStorage` |
+| ML / NLP | scikit-learn, pandas, VADER Sentiment |
+| Session Storage | Browser `sessionStorage` |
 | Frontend | HTML, CSS, JavaScript, Chart.js |
 | Testing | pytest |
 
+---
+
 ## 📁 Project Structure
 
-```text
+```
 TrustLens/
 ├── app.py
 ├── dataset/
@@ -86,9 +137,10 @@ TrustLens/
 ├── services/
 ├── templates/
 ├── tests/
-├── utils/
 └── train.py
 ```
+
+---
 
 ## 🚀 Setup
 
@@ -104,19 +156,23 @@ pip install flask pandas scikit-learn vaderSentiment pytest
 python app.py
 ```
 
-Open:
+Open your browser at:
 
-```text
+```
 http://127.0.0.1:5000
 ```
 
-Open **Analyze Article** → paste at least 20 words → analyze. Results remain available in the current browser session only.
+Navigate to **Analyze Article**, paste at least 20 words of content, and click **Analyze**. Results remain available in the current browser session only.
+
+---
 
 ## 🧪 Run Tests
 
 ```bash
 python -m pytest
 ```
+
+---
 
 ## 🔄 Retrain the Model
 
@@ -126,16 +182,18 @@ python train.py
 
 This rebuilds:
 
-```text
+```
 model/model.pkl
 model/tfidf.pkl
 ```
 
 using `dataset/news.csv`.
 
+---
+
 ## ⚠️ Limitations
 
-TrustLens does not independently verify facts, sources, statistics, or claims. It does not persist analysis history or user accounts in the current browser-session deployment.
+TrustLens does **not** independently verify facts, sources, statistics, or claims. It does not persist analysis history or user accounts in the current browser-session deployment.
 
 Results may be affected by:
 
@@ -145,19 +203,32 @@ Results may be affected by:
 - Linguistic ambiguity
 - Model uncertainty
 
-AI-writing likelihood is probabilistic and should not be treated as proof of AI authorship.
+AI-writing likelihood is probabilistic and should **not** be treated as proof of AI authorship.
 
 TrustLens supports investigation — it does not replace human judgment or professional fact-checking.
 
+---
+
 ## 🎓 Research Context
 
-TrustLens translates the methodology proposed in the research paper into a working application by combining:
+TrustLens is the practical, working implementation of the methodology proposed in the following peer-reviewed research paper:
+
+> **TrustLens: Machine Learning for Automated News Credibility Scoring**
+> *Vidula Kshirsagar, Amulya Gogate*
+> Mentor: *Mrs. Maitreyi Joglekar*
+> Department of Information Technology, Vidyalankar School of Information Technology (VSIT), Mumbai, Maharashtra
+> Published in the Proceedings of the **VSEARCH VIJANAN 2026 National Level Student Research Paper Conference**
+> ISBN: **978-93-5737-889-5**
+
+**Abstract:** The rapid growth of digital media has led to an overwhelming spread of online news, making it difficult for users to distinguish between credible and misleading information. TrustLens is an automated news credibility scoring system based on machine learning techniques that examines how articles are written and the language they use, rather than attempting to independently verify facts. The system analyzes both the title and textual content of news articles using models trained on multiple publicly available fake-news and fact-checking datasets — including the Kaggle Fake News dataset, the LIAR dataset, and the MultiFC dataset — to improve generalization and reduce dataset-specific bias. The result is a score that helps users quickly gauge how much they can trust an article, supporting the broader effort to combat misinformation.
+
+**Keywords:** Machine learning techniques, credibility scoring, logistic regression, research-oriented, fake news detection
+
+The application translates the paper's proposed methodology into a functioning system by combining:
 
 > **Machine Learning + NLP + Linguistic Analysis + Credibility Scoring**
 
-### Research Paper
-
-*TrustLens: An Automated News Credibility Scoring System Based on Machine Learning Techniques*
+---
 
 ## 🔮 Future Scope
 
@@ -172,6 +243,8 @@ TrustLens translates the methodology proposed in the research paper into a worki
 
 ---
 
-## 🔎 TrustLens
+## 🤝 Contributing
 
-> **Analyze the signals. Investigate the story. Make the judgment.**
+Contributions, issues, and feature requests are welcome. Feel free to open an issue or submit a pull request.
+
+---
