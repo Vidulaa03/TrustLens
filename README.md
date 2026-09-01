@@ -21,8 +21,7 @@ TrustLens is a Flask-based web application that analyzes news-style content usin
 - 📈 **Statistics & Trends**
 - 🔍 **Article Comparison**
 - 🗂️ **Analysis History**
-- 👤 **User Authentication & Profiles**
-- 💾 **SQLite Persistence**
+- 🌐 **Browser-Session Storage** — history and analytics are retained only in the active browser session
 
 ## 🔬 How It Works
 
@@ -72,7 +71,7 @@ model/tfidf.pkl
 | --- | --- |
 | Backend | Python, Flask, Jinja2 |
 | ML/NLP | scikit-learn, pandas, VADER Sentiment |
-| Database | SQLite |
+| Session storage | Browser `sessionStorage` |
 | Frontend | HTML, CSS, JavaScript, Chart.js |
 | Testing | pytest |
 
@@ -88,8 +87,7 @@ TrustLens/
 ├── templates/
 ├── tests/
 ├── utils/
-├── train.py
-└── trustlens.db
+└── train.py
 ```
 
 ## 🚀 Setup
@@ -112,7 +110,7 @@ Open:
 http://127.0.0.1:5000
 ```
 
-Create an account → **Analyze Article** → paste at least 20 words → analyze.
+Open **Analyze Article** → paste at least 20 words → analyze. Results remain available in the current browser session only.
 
 ## 🧪 Run Tests
 
@@ -137,7 +135,7 @@ using `dataset/news.csv`.
 
 ## ⚠️ Limitations
 
-TrustLens does not independently verify facts, sources, statistics, or claims.
+TrustLens does not independently verify facts, sources, statistics, or claims. It does not persist analysis history or user accounts in the current browser-session deployment.
 
 Results may be affected by:
 

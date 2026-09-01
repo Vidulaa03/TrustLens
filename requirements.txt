@@ -1,0 +1,4 @@
+Flask>=3.0,<4.0
+pandas>=2.2,<3.0
+scikit-learn==1.5.1
+vaderSentiment==3.3.2

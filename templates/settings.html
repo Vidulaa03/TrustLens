@@ -11,7 +11,13 @@
   </section>
 
   <div class="settings-grid">
-    <div class="settings-block">
+  <div class="settings-block">
+      <h3>Browser session</h3>
+      <p class="muted-copy">Analyses are kept only for the current browser session and are never saved to a server database.</p>
+      <button class="secondary-button" id="clearSession">Clear session history</button>
+    </div>
+
+  <div class="settings-block">
       <h3>Workspace</h3>
       <div class="grid-2">
         <div>
@@ -89,4 +95,14 @@
       </form>
     </div>
   </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('clearSession').addEventListener('click', () => {
+    if (confirm('Clear all analyses from this browser session?')) {
+      clearTrustLensRecords();
+      alert('Session history cleared.');
+    }
+  });
+</script>
 {% endblock %}

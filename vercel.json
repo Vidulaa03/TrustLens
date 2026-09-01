@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "app.py": {
+      "excludeFiles": "{tests/**,.venv/**,.pytest_cache/**,__pycache__/**,dataset/train.csv,dataset/train.tsv,trustlens.db,models/database.py}"
+    }
+  }
+}

@@ -1,357 +1,451 @@
 {% extends "base.html" %}
 {% block title %}Trends{% endblock %}
-
-{% block head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-.page-header {
-  margin: 6px 0 22px;
-}
-.page-header h1 {
-  margin: 0;
-  font-size: clamp(2.2rem, 4vw, 3.2rem);
-  line-height: 1.05;
-  letter-spacing: -0.06em;
-  color: #10252b;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.page-header p {
-  margin: 10px 0 0;
-  color: #40575c;
-  font-size: 1.04rem;
-}
-
-.chart-card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0.18));
-  border: 1px solid rgba(13, 27, 30, 0.08);
-  border-radius: 20px;
-  padding: 22px 22px 18px;
-  margin-bottom: 22px;
-  box-shadow: 0 18px 40px rgba(13, 27, 30, 0.08);
-}
-.chart-card h3 {
-  font-size: .8rem;
-  font-weight: 800;
-  color: #17363b;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  margin: 0 0 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.chart-card canvas {
-  display: block;
-  width: 100% !important;
-  height: 260px !important;
-}
-
-.heatmap-grid {
-  display: grid;
-  grid-template-columns: 56px repeat(24, minmax(8px, 1fr));
-  gap: 4px;
-  font-size: .65rem;
-  color: #46666d;
-}
-.heatmap-grid .day-label {
-  display:flex; align-items:center; font-weight:700; font-size:.65rem;
-}
-.heat-cell {
-  height: 18px;
-  border-radius: 5px;
-  transition: transform .15s ease, filter .15s ease;
-  cursor: default;
-}
-.heat-cell:hover { transform: scale(1.18); filter: brightness(1.08); z-index: 2; }
-.hour-labels { display:flex; gap:4px; padding-left:60px; margin-bottom:6px; }
-.hour-label  { flex:1; text-align:center; font-size:.58rem; color:#49676b; font-weight:700; }
-
-.ranked-list { display:flex; flex-direction:column; gap:10px; }
-.rank-item {
-  display:flex;
-  align-items:flex-start;
-  gap:14px;
-  background: rgba(255,255,255,.24);
-  border:1px solid rgba(16,37,43,0.08);
-  border-radius: 12px;
-  padding: 12px 14px;
-  transition: all .2s ease;
-}
-.rank-item:hover { border-color: rgba(16,37,43,0.12); transform: translateX(4px); }
-.rank-num {
-  width:30px; height:30px;
-  border-radius:50%;
-  background:linear-gradient(135deg,#2bb7a3,#3b82f6);
-  color:#fff;
-  display:flex; align-items:center; justify-content:center;
-  font-size:.76rem; font-weight:800; flex-shrink:0;
-}
-.rank-text-content { flex:1; }
-.rank-headline { font-size:.9rem; color:#1d3940; font-weight:600; margin-bottom:4px; }
-.rank-signals { font-size:.75rem; color:#4d6a70; }
-.rank-signal { display:inline-block; margin-right:8px; }
-.rank-badge {
-  font-size:.7rem; font-weight:800; padding:4px 8px; border-radius:6px; flex-shrink:0;
-}
-.rank-badge.high { background:rgba(239,68,68,0.2); color:#dc2626; }
-.rank-badge.medium { background:rgba(245,158,11,0.2); color:#d97706; }
-.rank-badge.low { background:rgba(34,197,94,0.2); color:#16a34a; }
-
-.anomaly-item {
-  display:flex;
-  gap:14px;
-  padding:14px 0;
-  border-bottom:1px solid rgba(16,37,43,0.08);
-}
-.anomaly-item:last-child { border-bottom:none; }
-.anomaly-dot {
-  width:11px; height:11px; border-radius:50%;
-  margin-top:5px; flex-shrink:0;
-  animation: pulse 2s infinite;
-}
-@keyframes pulse {
-  0%,100% { box-shadow:0 0 0 0 currentColor; }
-  50%      { box-shadow:0 0 0 6px transparent; }
-}
-.anomaly-title { font-size:.9rem; font-weight:700; color:#16363d; margin-bottom:3px; }
-.anomaly-sub   { font-size:.8rem; color:#4d6a70; }
-
-.trends-grid {
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:22px;
-}
-@media (max-width:900px) { .trends-grid { grid-template-columns:1fr; } }
-</style>
-{% endblock %}
-
+{% block page_title %}Trends{% endblock %}
 {% block content %}
-{% if not trend_data or trend_data.empty_state %}
-<div class="empty-state" style="margin-top: 12px; max-width: 760px;">
-  <span class="empty-icon"><i class="fa-solid fa-fire-flame-curved"></i></span>
-  <h3>Not enough activity data yet</h3>
-  <p>Analyze more content to identify usage patterns, trending topics, and risk signal trends.</p>
-  <button class="primary-button" onclick="window.location.href='/analyze'">Analyze Article</button>
-</div>
-{% else %}
-<div class="page-header">
-  <h1><i class="fa-solid fa-fire-flame-curved" style="font-size:1.6rem;"></i>  Intelligence Trends</h1>
-  <p>Patterns, anomalies, and insights from recent TrustLens analyses.</p>
-</div>
+<section class="page-header">
+  <h1>Session Trends & Analysis</h1>
+  <p>Trust, bias, and AI-writing signals across your analysis timeline.</p>
+</section>
 
-<div class="trends-grid">
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-arrow-trend-up"></i> Trending Topics This Week</h3>
-    <canvas id="trendingTopicsChart" height="240"></canvas>
+<!-- Timeline Charts -->
+<section class="charts-container">
+  <div class="chart-panel" style="grid-column: 1/-1;">
+    <div class="panel-header"><h3>Metrics Timeline</h3></div>
+    <canvas id="timelineChart" height="100"></canvas>
   </div>
+</section>
 
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-scale-unbalanced"></i> Rising Bias Categories</h3>
-    <canvas id="biasCatChart" height="240"></canvas>
+<!-- Comparative Analysis -->
+<section class="charts-container">
+  <div class="chart-panel">
+    <div class="panel-header"><h3>Trust vs Bias Correlation</h3></div>
+    <canvas id="correlationChart" height="80"></canvas>
   </div>
-</div>
-
-<div class="chart-card">
-  <h3><i class="fa-solid fa-robot"></i> AI-Generated Content Trend</h3>
-  <canvas id="aiTrendChart" height="140"></canvas>
-</div>
-
-<div class="chart-card">
-  <h3><i class="fa-solid fa-calendar-days"></i> Activity Heatmap (Hour × Day)</h3>
-  <div class="hour-labels" id="hourLabels"></div>
-  <div class="heatmap-grid" id="heatmap"></div>
-</div>
-
-<div class="trends-grid">
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-newspaper"></i> Most Suspicious Headlines</h3>
-    <div class="ranked-list" id="suspiciousHeadlines"></div>
+  <div class="chart-panel">
+    <div class="panel-header"><h3>AI Probability Timeline</h3></div>
+    <canvas id="aiTimelineChart" height="80"></canvas>
   </div>
+</section>
 
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-triangle-exclamation"></i> Recent Anomalies</h3>
-    <div id="anomalies"></div>
+<!-- Risk Timeline -->
+<section class="charts-container">
+  <div class="chart-panel" style="grid-column: 1/-1;">
+    <div class="panel-header"><h3>Risk Level Progression</h3></div>
+    <canvas id="riskTimelineChart" height="80"></canvas>
   </div>
-</div>
-{% endif %}
+</section>
+
+<!-- Additional Trends Analysis -->
+<section class="charts-container">
+  <div class="chart-panel">
+    <div class="panel-header"><h3>📊 Trend Analysis</h3></div>
+    <div id="trendAnalysis" style="padding: 15px;"></div>
+  </div>
+  <div class="chart-panel">
+    <div class="panel-header"><h3>🎯 Metrics Velocity</h3></div>
+    <canvas id="velocityChart" height="80"></canvas>
+  </div>
+</section>
+
+<!-- Pattern Detection -->
+<section class="charts-container">
+  <div class="chart-panel" style="grid-column: 1/-1;">
+    <div class="panel-header"><h3>🔍 Pattern Detection & Insights</h3></div>
+    <div id="patternInsights" style="padding: 15px;"></div>
+  </div>
+</section>
+
+<!-- Detailed List -->
+<section class="two-col">
+  <div class="panel">
+    <div class="panel-header"><h3>Analysis Timeline</h3><small style="font-weight: 400; color: var(--muted);">Most recent first</small></div>
+    <div id="trendList" style="max-height: 500px; overflow-y: auto;"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-header"><h3>Trend Summary</h3></div>
+    <div id="trendSummary" style="padding: 15px;"></div>
+  </div>
+</section>
+
+<style>
+.charts-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+.chart-panel {
+  background: var(--bg-panel);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid var(--line);
+}
+.chart-panel canvas {
+  max-height: 350px;
+}
+.trend-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.trend-item:last-child {
+  border-bottom: none;
+}
+.trend-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  margin-right: 6px;
+}
+</style>
+
 {% endblock %}
-
 {% block scripts %}
-{% if trend_data %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
-const trends = {{ trend_data | tojson }};
+const records = trustLensRecords();
 
-const sharedOpts = {
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: { duration: 900, easing: 'easeOutQuart' },
-  plugins: {
-    legend: {
-      labels: {
-        color: '#1e3d43',
-        usePointStyle: true,
-        pointStyle: 'circle',
-        boxWidth: 10,
-        boxHeight: 10,
-        padding: 14,
-        font: { size: 11, weight: 700 }
+// Metrics Timeline (Trust, Bias, AI Probability)
+if (records.length) {
+  const ctx1 = document.getElementById('timelineChart').getContext('2d');
+  new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: records.map((_, i) => `Analysis ${i+1}`),
+      datasets: [
+        {
+          label: 'Trust Score',
+          data: records.map(r => r.trust_score),
+          borderColor: '#2bb7a3',
+          backgroundColor: 'rgba(43, 183, 163, 0.05)',
+          borderWidth: 2,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#2bb7a3',
+          fill: true,
+          yAxisID: 'y'
+        },
+        {
+          label: 'Bias Score',
+          data: records.map(r => r.bias_score),
+          borderColor: '#e8837d',
+          backgroundColor: 'rgba(232, 131, 125, 0.05)',
+          borderWidth: 2,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#e8837d',
+          fill: true,
+          yAxisID: 'y'
+        },
+        {
+          label: 'AI Probability',
+          data: records.map(r => r.ai_probability),
+          borderColor: '#d4a574',
+          backgroundColor: 'rgba(212, 165, 116, 0.05)',
+          borderWidth: 2,
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: '#d4a574',
+          fill: true,
+          yAxisID: 'y'
+        }
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { color: 'var(--ink)', font: { size: 12 }, padding: 15 }
+        }
+      },
+      scales: {
+        y: {
+          type: 'linear',
+          display: true,
+          beginAtZero: true,
+          max: 100,
+          position: 'left',
+          ticks: { color: 'var(--muted)' },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        x: {
+          ticks: { color: 'var(--muted)' },
+          grid: { display: false }
+        }
       }
     }
-  },
-  scales: {
-    x: {
-      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
-      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
-      border: { display: false }
+  });
+
+  // Trust vs Bias Scatter Chart
+  const ctx2 = document.getElementById('correlationChart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Articles',
+        data: records.map(r => ({ x: r.bias_score, y: r.trust_score })),
+        backgroundColor: records.map(r => {
+          if (r.risk_level === 'HIGH') return 'rgba(232, 131, 125, 0.7)';
+          if (r.risk_level === 'MEDIUM') return 'rgba(212, 165, 116, 0.7)';
+          return 'rgba(74, 139, 126, 0.7)';
+        }),
+        borderColor: 'rgba(0,0,0,0.1)',
+        borderWidth: 1,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
     },
-    y: {
-      min: 0,
-      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
-      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
-      border: { display: false }
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Bias Score' }, min: 0, max: 100, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y: { title: { display: true, text: 'Trust Score' }, min: 0, max: 100, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } }
+      }
     }
-  }
-};
-
-new Chart(document.getElementById('trendingTopicsChart'), {
-  type: 'bar',
-  data: {
-    labels: trends.topic_labels,
-    datasets: [{
-      label: 'Articles',
-      data: trends.topic_counts,
-      backgroundColor: ['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#ec4899','#f97316','#ef4444'].slice(0, trends.topic_labels.length),
-      borderRadius: 8,
-      borderSkipped: false,
-      borderWidth: 0,
-      maxBarThickness: 26,
-      barPercentage: 0.78,
-      categoryPercentage: 0.8
-    }]
-  },
-  options: { ...sharedOpts, indexAxis: 'y' }
-});
-
-new Chart(document.getElementById('biasCatChart'), {
-  type: 'bar',
-  data: {
-    labels: trends.bias_cat_labels,
-    datasets: [{
-      label: 'Avg Bias Score',
-      data: trends.bias_cat_values,
-      backgroundColor: trends.bias_cat_values.map(v =>
-        v > 65 ? 'rgba(239,68,68,.82)' : v > 40 ? 'rgba(234,179,8,.82)' : 'rgba(34,197,94,.82)'),
-      borderRadius: 8,
-      borderSkipped: false,
-      borderWidth: 0,
-      maxBarThickness: 32,
-      barPercentage: 0.76,
-      categoryPercentage: 0.8
-    }]
-  },
-  options: sharedOpts
-});
-
-new Chart(document.getElementById('aiTrendChart'), {
-  type: 'line',
-  data: {
-    labels: trends.ai_dates,
-    datasets: [{
-      label: 'AI Probability %',
-      data: trends.ai_values,
-      borderColor: '#ec4899',
-      backgroundColor: 'rgba(236,72,153,.12)',
-      borderWidth: 3,
-      tension: .35,
-      fill: true,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      pointBackgroundColor: '#f472b6',
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2
-    }]
-  },
-  options: sharedOpts
-});
-
-const DAYS  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-const HOURS = Array.from({length:24}, (_,i) => i);
-const hmap  = trends.heatmap;
-const max   = Math.max(...hmap.flat());
-
-const hlWrap = document.getElementById('hourLabels');
-hlWrap.innerHTML = '';
-for (let hr=0; hr<24; hr++) {
-  const d = document.createElement('div');
-  d.className = 'hour-label';
-  if (hr % 6 === 0) d.textContent = `${hr}h`;
-  hlWrap.appendChild(d);
-}
-
-const heatEl = document.getElementById('heatmap');
-if (!hmap || hmap.every(row => row.every(v => v === 0))) {
-  heatEl.innerHTML = `<div style="grid-column: 1/-1; padding:20px; text-align:center; color:var(--ink-soft);">
-    <div style="font-size:0.9rem; margin-bottom:8px;"><i class="fa-solid fa-calendar-days"></i></div>
-    <div style="font-size:0.85rem;">Not enough activity to display patterns</div>
-  </div>`;
-} else {
-  heatEl.innerHTML = '';
-  DAYS.forEach((day, di) => {
-    const lbl = document.createElement('div');
-    lbl.className = 'day-label';
-    lbl.textContent = day;
-    heatEl.appendChild(lbl);
-
-    HOURS.forEach(hr => {
-      const val = hmap[di][hr] || 0;
-      const intensity = max > 0 ? val / max : 0;
-      const cell = document.createElement('div');
-      cell.className = 'heat-cell';
-      cell.title = `${day} ${hr}:00 — ${val} analyses`;
-      const alpha = 0.08 + intensity * 0.9;
-      cell.style.background = `rgba(124,58,237,${alpha.toFixed(2)})`;
-      heatEl.appendChild(cell);
-    });
   });
+
+  // AI Probability Timeline
+  const ctx3 = document.getElementById('aiTimelineChart').getContext('2d');
+  new Chart(ctx3, {
+    type: 'line',
+    data: {
+      labels: records.map((_, i) => `#${i+1}`),
+      datasets: [{
+        label: 'AI Probability %',
+        data: records.map(r => r.ai_probability),
+        borderColor: '#d4a574',
+        backgroundColor: 'rgba(212, 165, 116, 0.1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: '#d4a574',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointHoverRadius: 6
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: 100, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { color: 'var(--muted)' }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Risk Level Timeline
+  const riskColors = { 'LOW': '#4a8b7e', 'MEDIUM': '#d4a574', 'HIGH': '#e8837d' };
+  const ctx4 = document.getElementById('riskTimelineChart').getContext('2d');
+  new Chart(ctx4, {
+    type: 'bar',
+    data: {
+      labels: records.map((_, i) => `Analysis ${i+1}`),
+      datasets: [{
+        label: 'Risk Level',
+        data: records.map(r => {
+          if (r.risk_level === 'HIGH') return 3;
+          if (r.risk_level === 'MEDIUM') return 2;
+          return 1;
+        }),
+        backgroundColor: records.map(r => riskColors[r.risk_level] || '#4a8b7e'),
+        borderRadius: 4,
+        borderSkipped: false
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 3,
+          ticks: {
+            color: 'var(--muted)',
+            callback: function(value) {
+              const labels = ['', 'Low Risk', 'Medium Risk', 'High Risk'];
+              return labels[value] || '';
+            }
+          },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        },
+        x: { ticks: { color: 'var(--muted)' }, grid: { display: false } }
+      }
+    }
+  });
+} else {
+  document.getElementById('timelineChart').parentElement.innerHTML = '<div class="empty-state"><h3>No trends yet</h3><p>Analyze multiple articles during this browser session.</p></div>';
 }
 
-const shEl = document.getElementById('suspiciousHeadlines');
-if (!trends.suspicious_headlines || trends.suspicious_headlines.length === 0) {
-  shEl.innerHTML = `<div style="color:var(--ink-soft); padding:20px; text-align:center;">
-    <div style="font-size:1.1rem; margin-bottom:6px;"><i class="fa-solid fa-check-circle"></i></div>
-    <div style="font-weight:700;">No high-risk headlines detected.</div>
-  </div>`;
-} else {
-  (trends.suspicious_headlines || []).forEach((h, i) => {
-    const riskClass = h.risk_level === 'HIGH' ? 'high' : h.risk_level === 'MEDIUM' ? 'medium' : 'low';
-    const signalsHtml = (h.signals || []).map(s => `<span class="rank-signal">• ${s}</span>`).join('');
-    shEl.innerHTML += `
-      <div class="rank-item">
-        <div class="rank-num">${i+1}</div>
-        <div class="rank-text-content">
-          <div class="rank-headline">${h.headline}</div>
-          <div class="rank-signals">${signalsHtml || '<span class="rank-signal">Risk score: ' + h.risk_score + '</span>'}</div>
+// Detailed Timeline List
+document.getElementById('trendList').innerHTML = records.length
+  ? records.slice().reverse().map((row, idx) => {
+      const riskColor = row.risk_level === 'HIGH' ? '#e8837d' : row.risk_level === 'MEDIUM' ? '#d4a574' : '#4a8b7e';
+      const riskEmoji = row.risk_level === 'HIGH' ? '🔴' : row.risk_level === 'MEDIUM' ? '🟡' : '🟢';
+      const trustLevel = row.trust_score >= 70 ? 'High Trust' : row.trust_score >= 40 ? 'Medium Trust' : 'Low Trust';
+      return `<div class="trend-item">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <strong>${riskEmoji} ${escapeHtml(row.topic || 'General')}</strong>
+          <small style="color: var(--muted);">${idx + 1} analyses ago</small>
         </div>
-        <span class="rank-badge ${riskClass}">${h.risk_level}</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.9em;">
+          <span class="trend-badge" style="background: rgba(43,183,163,0.2); color: #2bb7a3;">Trust ${row.trust_score}%</span>
+          <span class="trend-badge" style="background: rgba(232,131,125,0.2); color: #e8837d;">Bias ${Math.round(row.bias_score)}%</span>
+          <span class="trend-badge" style="background: rgba(212,165,116,0.2); color: #d4a574;">AI ${Math.round(row.ai_probability)}%</span>
+          <span class="trend-badge" style="background: ${riskColor}22; color: ${riskColor};">${row.risk_level}</span>
+        </div>
+        <small style="color: var(--muted); display: block; margin-top: 6px;">
+          ${escapeHtml((row.article_text || '').slice(0, 80))}...
+        </small>
       </div>`;
-  });
-}
+    }).join('')
+  : '<div class="empty-state"><h3>No analyses yet</h3><p>Analyze articles to see trends.</p><a class="primary-button" href="/analyze">Analyze Article</a></div>';
 
-const aEl = document.getElementById('anomalies');
-(trends.anomalies || []).forEach(a => {
-  const colors = { high:'#ef4444', medium:'#f59e0b', low:'#22c55e' };
-  const color = colors[a.severity] || '#3b82f6';
-  aEl.innerHTML += `
-    <div class="anomaly-item">
-      <div class="anomaly-dot" style="background:${color};color:${color}"></div>
-      <div>
-        <div class="anomaly-title">${a.title}</div>
-        <div class="anomaly-sub">${a.description}</div>
+// Trend Summary
+if (records.length > 0) {
+  const avg = key => Math.round(records.reduce((total, row) => total + Number(row[key] || 0), 0) / records.length);
+  const trustTrend = records.length > 1 ? records[records.length - 1].trust_score - records[0].trust_score : 0;
+  const biasTrend = records.length > 1 ? records[records.length - 1].bias_score - records[0].bias_score : 0;
+  const aiTrend = records.length > 1 ? records[records.length - 1].ai_probability - records[0].ai_probability : 0;
+
+  // Trend Analysis
+  const firstHalf = records.slice(0, Math.ceil(records.length / 2));
+  const secondHalf = records.slice(Math.ceil(records.length / 2));
+  const firstHalfAvgTrust = Math.round(firstHalf.reduce((sum, r) => sum + r.trust_score, 0) / firstHalf.length);
+  const secondHalfAvgTrust = Math.round(secondHalf.reduce((sum, r) => sum + r.trust_score, 0) / secondHalf.length);
+  const sessionImprovement = secondHalfAvgTrust - firstHalfAvgTrust;
+
+  document.getElementById('trendAnalysis').innerHTML = `
+    <div style="padding: 10px 0; border-bottom: 1px solid var(--line);">
+      <strong>Trust Score Trend</strong><br>
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 1.1em;">
+        <span>${trustTrend > 0 ? '📈' : trustTrend < 0 ? '📉' : '➡️'}</span>
+        <strong style="color: ${trustTrend > 0 ? '#4a8b7e' : trustTrend < 0 ? '#e8837d' : '#d4a574'};">${Math.abs(trustTrend)}%</strong>
+        <small style="color: var(--muted);">${trustTrend > 0 ? 'Improvement' : trustTrend < 0 ? 'Decline' : 'Stable'}</small>
       </div>
-    </div>`;
-});
-</script>
-{% endif %}
-{% endblock %}
+    </div>
+    <div style="padding: 10px 0; border-bottom: 1px solid var(--line);">
+      <strong>Bias Score Trend</strong><br>
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 1.1em;">
+        <span>${biasTrend < 0 ? '📈' : biasTrend > 0 ? '📉' : '➡️'}</span>
+        <strong style="color: ${biasTrend < 0 ? '#4a8b7e' : biasTrend > 0 ? '#e8837d' : '#d4a574'};">${Math.abs(biasTrend)}%</strong>
+        <small style="color: var(--muted);">${biasTrend < 0 ? 'Improving' : biasTrend > 0 ? 'Worsening' : 'Stable'}</small>
+      </div>
+    </div>
+    <div style="padding: 10px 0;">
+      <strong>Session Progress</strong><br>
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 1.1em;">
+        <span>${sessionImprovement > 0 ? '✅' : sessionImprovement < 0 ? '⚠️' : '➡️'}</span>
+        <strong style="color: ${sessionImprovement > 0 ? '#4a8b7e' : sessionImprovement < 0 ? '#e8837d' : '#d4a574'};">${Math.abs(sessionImprovement)}%</strong>
+        <small style="color: var(--muted);">2nd half vs 1st half</small>
+      </div>
+    </div>
+  `;
+
+  // Velocity Chart - Rate of change
+  const velocityData = [];
+  for (let i = 1; i < records.length; i++) {
+    velocityData.push(records[i].trust_score - records[i-1].trust_score);
+  }
+
+  const ctx8 = document.getElementById('velocityChart').getContext('2d');
+  new Chart(ctx8, {
+    type: 'bar',
+    data: {
+      labels: velocityData.map((_, i) => `${i+1}→${i+2}`),
+      datasets: [{
+        label: 'Trust Score Change',
+        data: velocityData,
+        backgroundColor: velocityData.map(v => v > 0 ? '#4a8b7e' : v < 0 ? '#e8837d' : '#a8d0d4'),
+        borderRadius: 4,
+        borderSkipped: false
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { color: 'var(--muted)' }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Pattern Insights
+  const patterns = [];
+  if (trustTrend > 10) {
+    patterns.push('✅ <strong>Positive momentum</strong> — Trust scores improved significantly over time');
+  } else if (trustTrend < -10) {
+    patterns.push('⚠️ <strong>Declining credibility</strong> — Articles showed decreasing trust patterns');
+  }
+  
+  if (biasTrend > 15) {
+    patterns.push('🚩 <strong>Increasing bias</strong> — Emotional language and bias indicators grew');
+  } else if (biasTrend < -10) {
+    patterns.push('✅ <strong>Less biased</strong> — Bias patterns decreased over session');
+  }
+
+  if (aiTrend > 10) {
+    patterns.push('🤖 <strong>More AI signals</strong> — Later articles showed higher AI-writing likelihood');
+  } else if (aiTrend < -10) {
+    patterns.push('✍️ <strong>More human writing</strong> — AI signals decreased over time');
+  }
+
+  const volatility = (Math.max(...velocityData) - Math.min(...velocityData));
+  if (volatility > 30) {
+    patterns.push('⚡ <strong>High volatility</strong> — Large fluctuations in trust scores between analyses');
+  } else if (volatility < 10) {
+    patterns.push('📊 <strong>Consistent quality</strong> — Stable trust scores throughout session');
+  }
+
+  if (patterns.length === 0) {
+    patterns.push('➡️ <strong>No significant patterns</strong> detected in this session');
+  }
+
+  document.getElementById('patternInsights').innerHTML = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+      ${patterns.map((p, idx) => `
+        <div style="padding: 12px; background: ${idx % 2 === 0 ? 'rgba(43,183,163,0.08)' : 'rgba(74,139,126,0.08)'}; border-radius: 8px; border-left: 4px solid ${idx % 2 === 0 ? '#2bb7a3' : '#4a8b7e'}; line-height: 1.6; font-size: 0.9em;">
+          ${p}
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  document.getElementById('trendSummary').innerHTML = `
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--line);">
+      <div style="font-size: 0.9em; color: var(--muted); margin-bottom: 5px;">Average Trust Score</div>
+      <div style="font-size: 1.6em; font-weight: 600; color: #2bb7a3;">${avg('trust_score')}%</div>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--line);">
+      <div style="font-size: 0.9em; color: var(--muted); margin-bottom: 5px;">Average Bias Score</div>
+      <div style="font-size: 1.6em; font-weight: 600; color: #e8837d;">${avg('bias_score')}%</div>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--line);">
+      <div style="font-size: 0.9em; color: var(--muted); margin-bottom: 5px;">Average AI Probability</div>
+      <div style="font-size: 1.6em; font-weight: 600; color: #d4a574;">${avg('ai_probability')}%</div>
+    </div>
+    <div style="padding: 12px 0; border-bottom: 1px solid var(--line);">
+      <div style="font-size: 0.9em; color: var(--muted); margin-bottom: 5px;">Total Analyses</div>
+      <div style="font-size: 1.6em; font-weight: 600; color: #4a8b7e;">${records.length}</div>
+    </div>
+    <div style="padding: 12px 0;">
+      <div style="font-size: 0.9em; color: var(--muted); margin-bottom: 8px;">Trust Trend</div>
+      <div style="font-size: 1.1em; font-weight: 600; color: ${trustTrend > 0 ? '#4a8b7e' : trustTrend < 0 ? '#e8837d' : '#d4a574'};">
+        ${trustTrend > 0 ? '📈' : trustTrend < 0 ? '📉' : '➡️'} ${Math.abs(trustTrend)}% ${trustTrend > 0 ? 'Improvement' : trustTrend < 0 ? 'Decline' : 'No change'}
+      </div>
+    </div>
+  `;
+}
+</script>{% endblock %}

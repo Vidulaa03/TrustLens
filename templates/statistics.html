@@ -1,380 +1,397 @@
 {% extends "base.html" %}
 {% block title %}Statistics{% endblock %}
-
-{% block head %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.counter { animation: countUp .6s ease; }
-
-.page-header {
-  margin: 6px 0 22px;
-}
-.page-header h1 {
-  margin: 0;
-  font-size: clamp(2.2rem, 4vw, 3.2rem);
-  line-height: 1.05;
-  letter-spacing: -0.06em;
-  color: #10252b;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.page-header p {
-  margin: 10px 0 0;
-  color: #40575c;
-  font-size: 1.04rem;
-}
-
-.chart-card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.32), rgba(255,255,255,0.18));
-  border: 1px solid rgba(13, 27, 30, 0.08);
-  border-radius: 20px;
-  padding: 22px 22px 18px;
-  margin-bottom: 22px;
-  box-shadow: 0 18px 40px rgba(13, 27, 30, 0.08);
-}
-.chart-card h3 {
-  font-size: .8rem;
-  font-weight: 800;
-  color: #17363b;
-  text-transform: uppercase;
-  letter-spacing: .14em;
-  margin: 0 0 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.chart-card canvas {
-  display: block;
-  width: 100% !important;
-  height: 260px !important;
-}
-
-.charts-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
-}
-@media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
-
-.activity-table { width: 100%; border-collapse: collapse; }
-.activity-table th {
-  text-align: left;
-  padding: 12px 14px;
-  font-size: .75rem;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  color: #49676b;
-  border-bottom: 1px solid rgba(16,37,43,0.1);
-}
-.activity-table td {
-  padding: 12px 14px;
-  font-size: .88rem;
-  color: #213d42;
-  border-bottom: 1px solid rgba(16,37,43,0.07);
-}
-.activity-table tr:hover td { background: rgba(255,255,255,0.04); }
-
-.card-icon {
-  font-size: 1.4rem;
-  margin-bottom: 8px;
-  display: inline-block;
-}
-
-.stat-card {
-  position: relative;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.34);
-  border: 1px solid rgba(16, 37, 43, 0.08);
-  border-radius: 18px;
-  padding: 18px 18px 16px;
-  box-shadow: 0 14px 28px rgba(13, 27, 30, 0.06);
-}
-.stat-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 4px;
-  background: var(--card-accent, linear-gradient(90deg, #2bb7a3, #3b82f6));
-}
-
-.card-label {
-  display: block;
-  color: #4a6368;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  font-size: .7rem;
-  font-weight: 700;
-}
-.card-value {
-  display: block;
-  margin-top: 10px;
-  color: #0f252b;
-  font-size: clamp(1.9rem, 2vw, 2.4rem);
-  font-weight: 800;
-  letter-spacing: -0.06em;
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 52px;
-  padding: 6px 9px;
-  border-radius: 999px;
-  font-size: .7rem;
-  font-weight: 700;
-  letter-spacing: .04em;
-  border: 1px solid transparent;
-}
-.tag-green { background: rgba(34,197,94,0.12); color: #166534; border-color: rgba(34,197,94,0.18); }
-.tag-yellow { background: rgba(234,179,8,0.12); color: #8a5b00; border-color: rgba(234,179,8,0.18); }
-.tag-red { background: rgba(239,68,68,0.12); color: #991b1b; border-color: rgba(239,68,68,0.18); }
-.tag-blue { background: rgba(59,130,246,0.10); color: #1d4ed8; border-color: rgba(59,130,246,0.15); }
-</style>
-{% endblock %}
-
+{% block page_title %}Statistics{% endblock %}
 {% block content %}
-{% if not stats %}
-<div class="empty-state" style="margin-top: 12px; max-width: 760px;">
-  <span class="empty-icon"><i class="fa-solid fa-chart-column"></i></span>
-  <h3>No platform statistics yet</h3>
-  <p>Run a few analyses to populate the TrustLens dashboard and trend intelligence.</p>
-  <button class="solid-button" onclick="window.location.href='/analyze'">Analyze Article</button>
-</div>
-{% else %}
-<div class="page-header">
-  <h1><i class="fa-solid fa-chart-bar" style="font-size:1.6rem;"></i>  Platform Statistics</h1>
-  <p>Analytics and insights from all articles analyzed through TrustLens.</p>
-</div>
+<section class="page-header">
+  <h1>Session Statistics</h1>
+  <p>Comprehensive aggregated analytics from this browser session.</p>
+</section>
 
-<div class="cards-grid" style="grid-template-columns:repeat(auto-fit,minmax(175px,1fr))">
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--blue))">
-    <span class="card-icon">📄</span>
-    <span class="card-label">Total Articles</span>
-    <span class="card-value counter" id="totalArticles">{{ stats.total_articles }}</span>
-  </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--cyan),var(--green))">
-    <span class="card-icon">🛡️</span>
-    <span class="card-label">Avg Trust Score <span class="tooltip-icon" data-tooltip="Composite score combining ML model + bias signals + sentiment"></span></span>
-    <span class="card-value counter" id="avgTrust">{{ stats.avg_trust_score }}</span>
-  </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--yellow),var(--red))">
-    <span class="card-icon">⚖️</span>
-    <span class="card-label">Avg Bias Score <span class="tooltip-icon" data-tooltip="Detects emotional language, one-sided arguments, political framing"></span></span>
-    <span class="card-value counter" id="avgBias">{{ stats.avg_bias_score }}</span>
-  </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--purple),var(--pink))">
-    <span class="card-icon">🤖</span>
-    <span class="card-label">AI-Writing Likelihood <span class="tooltip-icon" data-tooltip="Probability estimate based on sentence structure and vocabulary patterns"></span></span>
-    <span class="card-value counter" id="avgAI">{{ stats.avg_ai_score }}%</span>
-  </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--blue),var(--cyan))">
-    <span class="card-icon">🏷️</span>
-    <span class="card-label">Top Topic</span>
-    <span class="card-value" style="font-size:1.2rem;" id="topTopic">{{ stats.top_topic }}</span>
-  </div>
-  <div class="stat-card" style="--card-accent:linear-gradient(90deg,var(--green),var(--cyan))">
-    <span class="card-icon">📅</span>
-    <span class="card-label">Peak Day</span>
-    <span class="card-value" style="font-size:1.2rem;" id="peakDay">{{ stats.peak_day }}</span>
-  </div>
-</div>
+<!-- Primary Metrics -->
+<section class="cards-grid" id="statistics"></section>
 
-<div class="charts-grid">
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-chart-line"></i> Trust Score Over Time</h3>
-    <canvas id="trustChart" height="220"></canvas>
+<!-- Distribution Charts -->
+<section class="charts-container">
+  <div class="chart-panel">
+    <div class="panel-header"><h3>Trust Score Distribution</h3></div>
+    <canvas id="trustDistribution" height="80"></canvas>
   </div>
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-chart-pie"></i> Topic Distribution</h3>
-    <canvas id="topicChart" height="220"></canvas>
+  <div class="chart-panel">
+    <div class="panel-header"><h3>Bias Score Range</h3></div>
+    <canvas id="biasDistribution" height="80"></canvas>
   </div>
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-chart-simple"></i> Bias Score Trend</h3>
-    <canvas id="biasChart" height="220"></canvas>
-  </div>
-  <div class="chart-card">
-    <h3><i class="fa-solid fa-robot"></i> AI Detection Rate</h3>
-    <canvas id="aiChart" height="220"></canvas>
-  </div>
-</div>
+</section>
 
-<div class="chart-card">
-  <h3><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h3>
-  {% if stats.recent_activity %}
-  <table class="activity-table">
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Snippet</th>
-        <th>Trust</th>
-        <th>Bias</th>
-        <th>Topic</th>
-        <th>AI%</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in stats.recent_activity %}
-      <tr>
-        <td>{{ row.date }}</td>
-        <td>{{ row.snippet }}</td>
-        <td><span class="tag {% if row.trust > 65 %}tag-green{% elif row.trust > 40 %}tag-yellow{% else %}tag-red{% endif %}">{{ row.trust }}</span></td>
-        <td><span class="tag {% if row.bias < 35 %}tag-green{% elif row.bias < 65 %}tag-yellow{% else %}tag-red{% endif %}">{{ row.bias }}</span></td>
-        <td><span class="tag tag-blue">{{ row.topic }}</span></td>
-        <td>{{ row.ai_pct }}%</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p style="color:var(--text-muted);text-align:center;padding:30px;">No analysis history yet. Start analyzing articles!</p>
-  {% endif %}
-</div>
-{% endif %}
+<!-- Detailed Analysis -->
+<section class="charts-container">
+  <div class="chart-panel">
+    <div class="panel-header"><h3>AI Probability Breakdown</h3></div>
+    <canvas id="aiProbabilityChart" height="80"></canvas>
+  </div>
+  <div class="chart-panel">
+    <div class="panel-header"><h3>Topic Analysis</h3></div>
+    <canvas id="topicStatsChart" height="80"></canvas>
+  </div>
+</section>
+
+<!-- Risk Category Breakdown -->
+<section class="charts-container">
+  <div class="chart-panel">
+    <div class="panel-header"><h3>Risk Category Breakdown</h3></div>
+    <div id="riskBreakdown" style="padding: 20px;"></div>
+  </div>
+  <div class="chart-panel">
+    <div class="panel-header"><h3>Detailed Statistics</h3></div>
+    <div id="detailedStats" style="padding: 20px;"></div>
+  </div>
+</section>
+
+<!-- Advanced Insights -->
+<section class="charts-container">
+  <div class="chart-panel" style="grid-column: 1/-1;">
+    <div class="panel-header"><h3>📈 Analysis Insights & Patterns</h3></div>
+    <div id="insightsPanel" style="padding: 20px;"></div>
+  </div>
+</section>
+
+<!-- Topic Deep Dive -->
+<section class="charts-container">
+  <div class="chart-panel" style="grid-column: 1/-1;">
+    <div class="panel-header"><h3>Topic Performance Metrics</h3></div>
+    <canvas id="topicPerformance" height="80"></canvas>
+  </div>
+</section>
+
+<style>
+.charts-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+.chart-panel {
+  background: var(--bg-panel);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border: 1px solid var(--line);
+}
+.chart-panel canvas {
+  max-height: 350px;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.stat-row:last-child {
+  border-bottom: none;
+}
+</style>
+
 {% endblock %}
-
 {% block scripts %}
-{% if stats %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script>
-const chartDefaults = {
-  responsive: true,
-  maintainAspectRatio: false,
-  color: '#204149',
-  plugins: {
-    legend: {
-      labels: {
-        color: '#1e3d43',
-        usePointStyle: true,
-        pointStyle: 'circle',
-        boxWidth: 10,
-        boxHeight: 10,
-        padding: 14,
-        font: { size: 11, weight: 700 }
-      }
-    }
-  },
-  scales: {
-    x: {
-      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
-      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
-      border: { display: false }
-    },
-    y: {
-      min: 0,
-      max: 100,
-      ticks: { color: '#335a62', font: { size: 10, weight: 600 } },
-      grid: { color: 'rgba(21, 52, 59, 0.08)', drawBorder: false },
-      border: { display: false }
-    }
-  }
+const records = trustLensRecords();
+const avg = key => records.length ? Math.round(records.reduce((total, row) => total + Number(row[key] || 0), 0) / records.length) : 0;
+const min = key => records.length ? Math.min(...records.map(r => Number(r[key] || 0))) : 0;
+const max = key => records.length ? Math.max(...records.map(r => Number(r[key] || 0))) : 0;
+
+// Calculate percentiles
+const getPercentile = (arr, p) => {
+  if (arr.length === 0) return 0;
+  const sorted = arr.sort((a, b) => a - b);
+  const idx = Math.ceil(sorted.length * p / 100) - 1;
+  return sorted[idx];
 };
 
-const chartData = {{ stats.chart_data | tojson }};
+const trustScores = records.map(r => Number(r.trust_score || 0));
+const biasScores = records.map(r => Number(r.bias_score || 0));
+const aiProbs = records.map(r => Number(r.ai_probability || 0));
 
-new Chart(document.getElementById('trustChart'), {
-  type: 'line',
-  data: {
-    labels: chartData.dates,
-    datasets: [{
-      label: 'Trust Score',
-      data: chartData.trust_scores,
-      borderColor: '#7c3aed',
-      backgroundColor: 'rgba(124,58,237,.12)',
-      borderWidth: 3,
-      tension: .38,
-      fill: true,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      pointBackgroundColor: '#a855f7',
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2
-    }]
-  },
-  options: { ...chartDefaults }
-});
+// Primary Metrics
+document.getElementById('statistics').innerHTML = [
+  ['Total Analyses', records.length],
+  ['Average Trust', `${avg('trust_score')}%`],
+  ['Average Bias', `${avg('bias_score')}%`],
+  ['Average AI Probability', `${avg('ai_probability')}%`],
+  ['Median Trust', `${getPercentile(trustScores, 50)}%`],
+  ['Max Bias Score', `${max('bias_score')}%`]
+].map(([label, value]) => `<div class="stat-card"><div class="label">${label}</div><div class="value" style="font-size:1.8em;font-weight:600">${value}</div></div>`).join('');
 
-const topicColors = ['#7c3aed','#3b82f6','#06b6d4','#22c55e','#eab308','#ec4899','#f97316','#ef4444'];
-new Chart(document.getElementById('topicChart'), {
-  type: 'doughnut',
-  data: {
-    labels: chartData.topic_labels,
-    datasets: [{
-      data: chartData.topic_counts,
-      backgroundColor: topicColors,
-      borderColor: '#edf7f8',
-      borderWidth: 3,
-      hoverOffset: 12,
-      weight: 1
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: '58%',
-    plugins: {
-      legend: {
-        position: 'right',
-        labels: {
-          color: '#1e3d43',
-          usePointStyle: true,
-          pointStyle: 'circle',
-          boxWidth: 10,
-          boxHeight: 10,
-          padding: 14,
-          font: { size: 11, weight: 700 }
-        }
+// Trust Score Distribution (Histogram)
+if (records.length) {
+  const trustRanges = {
+    '90-100': trustScores.filter(t => t >= 90).length,
+    '70-89': trustScores.filter(t => t >= 70 && t < 90).length,
+    '50-69': trustScores.filter(t => t >= 50 && t < 70).length,
+    '30-49': trustScores.filter(t => t >= 30 && t < 50).length,
+    '0-29': trustScores.filter(t => t < 30).length
+  };
+
+  const ctx1 = document.getElementById('trustDistribution').getContext('2d');
+  new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(trustRanges),
+      datasets: [{
+        label: 'Count',
+        data: Object.values(trustRanges),
+        backgroundColor: ['#2bb7a3', '#4a8b7e', '#d4a574', '#e8837d', '#8b5a5a'],
+        borderRadius: 6,
+        borderSkipped: false
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { color: 'var(--muted)' }, grid: { display: false } }
       }
     }
+  });
+
+  // Bias Score Distribution
+  const biasRanges = {
+    '80-100': biasScores.filter(b => b >= 80).length,
+    '60-79': biasScores.filter(b => b >= 60 && b < 80).length,
+    '40-59': biasScores.filter(b => b >= 40 && b < 60).length,
+    '20-39': biasScores.filter(b => b >= 20 && b < 40).length,
+    '0-19': biasScores.filter(b => b < 20).length
+  };
+
+  const ctx2 = document.getElementById('biasDistribution').getContext('2d');
+  new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(biasRanges),
+      datasets: [{
+        label: 'Count',
+        data: Object.values(biasRanges),
+        backgroundColor: ['#e8837d', '#d4a574', '#a8d0d4', '#4a8b7e', '#2bb7a3'],
+        borderRadius: 6,
+        borderSkipped: false
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { color: 'var(--muted)' }, grid: { display: false } }
+      }
+    }
+  });
+
+  // AI Probability Breakdown
+  const aiRanges = {
+    'Very High (75+)': aiProbs.filter(a => a >= 75).length,
+    'High (55-74)': aiProbs.filter(a => a >= 55 && a < 75).length,
+    'Medium (30-54)': aiProbs.filter(a => a >= 30 && a < 55).length,
+    'Low (0-29)': aiProbs.filter(a => a < 30).length
+  };
+
+  const ctx3 = document.getElementById('aiProbabilityChart').getContext('2d');
+  new Chart(ctx3, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(aiRanges),
+      datasets: [{
+        data: Object.values(aiRanges),
+        backgroundColor: ['#e8837d', '#d4a574', '#a8d0d4', '#2bb7a3'],
+        borderColor: 'var(--white)',
+        borderWidth: 2
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: 'var(--ink)', font: { size: 11 }, padding: 12 } }
+      }
+    }
+  });
+
+  // Topic Statistics
+  const topicCounts = records.reduce((result, row) => {
+    const topic = row.topic || 'General';
+    if (!result[topic]) result[topic] = { count: 0, trust: [], bias: [], ai: [] };
+    result[topic].count++;
+    result[topic].trust.push(Number(row.trust_score || 0));
+    result[topic].bias.push(Number(row.bias_score || 0));
+    result[topic].ai.push(Number(row.ai_probability || 0));
+    return result;
+  }, {});
+
+  const topicLabels = Object.keys(topicCounts);
+  const topicAvgTrust = topicLabels.map(t => Math.round(topicCounts[t].trust.reduce((a,b) => a+b, 0) / topicCounts[t].trust.length));
+
+  const ctx4 = document.getElementById('topicStatsChart').getContext('2d');
+  new Chart(ctx4, {
+    type: 'bar',
+    data: {
+      labels: topicLabels,
+      datasets: [{
+        label: 'Avg Trust',
+        data: topicAvgTrust,
+        backgroundColor: '#2bb7a3',
+        borderRadius: 6,
+        borderSkipped: false
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { beginAtZero: true, max: 100, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y: { ticks: { color: 'var(--muted)' }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Risk Breakdown
+  const highRisk = records.filter(r => r.risk_level === 'HIGH').length;
+  const mediumRisk = records.filter(r => r.risk_level === 'MEDIUM').length;
+  const lowRisk = records.filter(r => r.risk_level === 'LOW').length;
+  const total = records.length || 1;
+
+  document.getElementById('riskBreakdown').innerHTML = `
+    <div class="stat-row">
+      <span>🔴 High Risk</span>
+      <strong>${highRisk}</strong>
+      <small style="color: var(--muted);">${Math.round((highRisk/total)*100)}%</small>
+    </div>
+    <div class="stat-row">
+      <span>🟡 Medium Risk</span>
+      <strong>${mediumRisk}</strong>
+      <small style="color: var(--muted);">${Math.round((mediumRisk/total)*100)}%</small>
+    </div>
+    <div class="stat-row">
+      <span>🟢 Low Risk</span>
+      <strong>${lowRisk}</strong>
+      <small style="color: var(--muted);">${Math.round((lowRisk/total)*100)}%</small>
+    </div>
+    <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid var(--line);">
+      <div class="stat-row">
+        <span>📊 Total Analyzed</span>
+        <strong>${total}</strong>
+      </div>
+    </div>
+  `;
+
+  // Detailed Statistics
+  document.getElementById('detailedStats').innerHTML = `
+    <div class="stat-row">
+      <span>Min Trust Score</span>
+      <strong>${min('trust_score')}%</strong>
+    </div>
+    <div class="stat-row">
+      <span>Max Trust Score</span>
+      <strong>${max('trust_score')}%</strong>
+    </div>
+    <div class="stat-row">
+      <span>Median Trust Score</span>
+      <strong>${getPercentile(trustScores.slice(), 50)}%</strong>
+    </div>
+    <div class="stat-row">
+      <span>Min Bias Score</span>
+      <strong>${min('bias_score')}%</strong>
+    </div>
+    <div class="stat-row">
+      <span>Max Bias Score</span>
+      <strong>${max('bias_score')}%</strong>
+    </div>
+    <div class="stat-row">
+      <span>Median Bias Score</span>
+      <strong>${getPercentile(biasScores.slice(), 50)}%</strong>
+    </div>
+  `;
+
+  // Topic Performance Chart
+  const topicAvgBias = topicLabels.map(t => Math.round(topicCounts[t].bias.reduce((a,b) => a+b, 0) / topicCounts[t].bias.length));
+  const topicAvgAI = topicLabels.map(t => Math.round(topicCounts[t].ai.reduce((a,b) => a+b, 0) / topicCounts[t].ai.length));
+
+  const ctx7 = document.getElementById('topicPerformance').getContext('2d');
+  new Chart(ctx7, {
+    type: 'bar',
+    data: {
+      labels: topicLabels,
+      datasets: [
+        {
+          label: 'Avg Trust',
+          data: topicAvgTrust,
+          backgroundColor: '#2bb7a3',
+          borderRadius: 6,
+          borderSkipped: false
+        },
+        {
+          label: 'Avg Bias',
+          data: topicAvgBias,
+          backgroundColor: '#e8837d',
+          borderRadius: 6,
+          borderSkipped: false
+        },
+        {
+          label: 'Avg AI Prob',
+          data: topicAvgAI,
+          backgroundColor: '#d4a574',
+          borderRadius: 6,
+          borderSkipped: false
+        }
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: 'var(--ink)', font: { size: 11 }, padding: 15 } }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100, ticks: { color: 'var(--muted)' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { color: 'var(--muted)' }, grid: { display: false } }
+      }
+    }
+  });
+
+  // Insights Panel
+  const highBiasTopic = topicLabels[topicAvgBias.indexOf(Math.max(...topicAvgBias))];
+  const highTrustTopic = topicLabels[topicAvgTrust.indexOf(Math.max(...topicAvgTrust))];
+  const lowTrustTopic = topicLabels[topicAvgTrust.indexOf(Math.min(...topicAvgTrust))];
+  const credibilityGap = Math.max(...topicAvgTrust) - Math.min(...topicAvgTrust);
+
+  let insights = [];
+  if (records.length === 0) {
+    insights.push('No data available. Start analyzing articles.');
+  } else {
+    insights.push(`📊 Total articles analyzed: <strong>${records.length}</strong>`);
+    insights.push(`📈 Credibility gap: <strong>${credibilityGap}%</strong> between highest and lowest trust topics`);
+    insights.push(`✅ Most credible topic: <strong>${highTrustTopic}</strong> (${Math.max(...topicAvgTrust)}% avg trust)`);
+    insights.push(`⚠️ Least credible topic: <strong>${lowTrustTopic}</strong> (${Math.min(...topicAvgTrust)}% avg trust)`);
+    insights.push(`🚩 Most biased topic: <strong>${highBiasTopic}</strong> (${Math.max(...topicAvgBias)}% avg bias)`);
+    const trustDistribution = records.length > 0 ? Math.round((records.filter(r => r.trust_score >= 70).length / records.length) * 100) : 0;
+    insights.push(`💯 High credibility articles: <strong>${trustDistribution}%</strong> of all analyses`);
   }
-});
 
-new Chart(document.getElementById('biasChart'), {
-  type: 'bar',
-  data: {
-    labels: chartData.dates,
-    datasets: [{
-      label: 'Bias Score',
-      data: chartData.bias_scores,
-      backgroundColor: chartData.bias_scores.map(v =>
-        v > 65 ? 'rgba(239,68,68,.82)' : v > 35 ? 'rgba(234,179,8,.82)' : 'rgba(34,197,94,.82)'),
-      borderRadius: 6,
-      borderSkipped: false,
-      borderWidth: 0,
-      maxBarThickness: 26,
-      barPercentage: 0.72,
-      categoryPercentage: 0.8
-    }]
-  },
-  options: { ...chartDefaults }
-});
+  document.getElementById('insightsPanel').innerHTML = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+      ${insights.map((insight, idx) => `
+        <div style="padding: 12px; background: ${idx % 2 === 0 ? 'rgba(43,183,163,0.08)' : 'rgba(232,131,125,0.08)'}; border-radius: 8px; border-left: 4px solid ${idx % 2 === 0 ? '#2bb7a3' : '#e8837d'}; line-height: 1.6;">
+          <div>${insight}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
 
-new Chart(document.getElementById('aiChart'), {
-  type: 'line',
-  data: {
-    labels: chartData.dates,
-    datasets: [{
-      label: 'AI Probability %',
-      data: chartData.ai_scores,
-      borderColor: '#ec4899',
-      backgroundColor: 'rgba(236,72,153,.12)',
-      borderWidth: 3,
-      tension: .3,
-      fill: true,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-      pointBackgroundColor: '#f472b6',
-      pointBorderColor: '#fff',
-      pointBorderWidth: 2,
-      cubicInterpolationMode: 'monotone'
-    }]
-  },
-  options: { ...chartDefaults }
-});
-</script>
-{% endif %}
-{% endblock %}
+// Empty state
+if (!records.length) {
+  document.getElementById('statistics').innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><h3>No analyses yet</h3><p>Start analyzing articles to see statistics.</p></div>';
+}
+</script>{% endblock %}

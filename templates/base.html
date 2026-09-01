@@ -148,7 +148,7 @@
       <li><a href="/history" class="nav-link {% if request.path == '/history' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i><span>History</span></a></li>
       <li><a href="/statistics" class="nav-link {% if request.path == '/statistics' %}active{% endif %}"><i class="fa-solid fa-chart-bar"></i><span>Statistics</span></a></li>
       <li><a href="/trends" class="nav-link {% if request.path == '/trends' %}active{% endif %}"><i class="fa-solid fa-fire-flame-curved"></i><span>Trends</span></a></li>
-      <li><a href="/api-access" class="nav-link {% if request.path == '/api-access' %}active{% endif %}"><i class="fa-solid fa-key"></i><span>API Access</span></a></li>
+      <li><a href="/settings" class="nav-link {% if request.path == '/settings' %}active{% endif %}"><i class="fa-solid fa-gear"></i><span>Session</span></a></li>
     </ul>
     <div class="sidebar-footer">TrustLens v2</div>
   </aside>
@@ -158,19 +158,27 @@
       <div class="crumb">TrustLens <span>/</span> <strong>{% block page_title %}Overview{% endblock %}</strong></div>
       <div class="topbar-actions">
         <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input type="text" placeholder="Search analyses" /></div>
-        {% if session.get('user_id') %}
-          <div class="user-pill"><i class="fa-solid fa-user"></i> {{ session.get('user_name') or session.get('user_username') }}</div>
-          <a class="secondary-button" href="/profile">Profile</a>
-          <a class="primary-button" href="/logout">Sign out</a>
-        {% else %}
-          <a class="primary-button" href="/login">Sign in</a>
-        {% endif %}
+        <span class="user-pill"><i class="fa-solid fa-browser"></i> Browser session</span>
       </div>
     </header>
 
     {% block content %}{% endblock %}
   </main>
 
+  <script>
+    const TRUSTLENS_SESSION_KEY = 'trustlens_analyses';
+    function trustLensRecords() { try { return JSON.parse(sessionStorage.getItem(TRUSTLENS_SESSION_KEY) || '[]'); } catch { return []; } }
+    function saveTrustLensRecords(records) { sessionStorage.setItem(TRUSTLENS_SESSION_KEY, JSON.stringify(records)); }
+    function addTrustLensRecord(articleText, analysis) {
+      const records = trustLensRecords();
+      records.unshift({ id: String(Date.now()), article_text: articleText.slice(0, 5000), timestamp: new Date().toISOString(), ...analysis });
+      saveTrustLensRecords(records);
+      return records[0];
+    }
+    function clearTrustLensRecords() { sessionStorage.removeItem(TRUSTLENS_SESSION_KEY); }
+    function sessionDate(value) { return new Date(value).toLocaleString(); }
+    function escapeHtml(value) { const element = document.createElement('div'); element.textContent = value ?? ''; return element.innerHTML; }
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

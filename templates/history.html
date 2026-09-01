@@ -1,97 +1,14 @@
 {% extends "base.html" %}
 {% block title %}History{% endblock %}
 {% block page_title %}History{% endblock %}
-
 {% block content %}
-  <section class="page-header">
-    <div>
-      <h1>Analysis History</h1>
-      <p>Review every article analysis and compare credibility, risk, and topic patterns.</p>
-    </div>
-    <a class="solid-button" href="/history/export.csv">Export CSV</a>
-  </section>
-
-  <div class="panel" style="margin-bottom: 20px;">
-    <form method="get" style="display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); align-items: end;">
-      <div>
-        <label>Search</label>
-        <input type="text" name="search" value="{{ request.args.get('search', '') }}" placeholder="Article text...">
-      </div>
-      <div>
-        <label>Topic</label>
-        <select name="topic">
-          <option value="">All topics</option>
-          {% for topic in topics %}
-            <option value="{{ topic }}" {% if request.args.get('topic') == topic %}selected{% endif %}>{{ topic }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label>Risk</label>
-        <select name="risk">
-          <option value="">All risk</option>
-          {% for level in risks %}
-            <option value="{{ level }}" {% if request.args.get('risk') == level %}selected{% endif %}>{{ level }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label>Minimum score</label>
-        <input type="number" name="score" min="0" max="100" value="{{ request.args.get('score', '') }}" placeholder="Score">
-      </div>
-      <div>
-        <button class="solid-button" type="submit">Apply filters</button>
-      </div>
-    </form>
-  </div>
-
-  <div class="panel">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Article</th>
-            <th>Date</th>
-            <th>Trust</th>
-            <th>Bias</th>
-            <th>AI</th>
-            <th>Topic</th>
-            <th>Risk</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if analyses %}
-            {% for row in analyses %}
-            <tr>
-              <td>{{ (row.article_text or '')[:80] }}</td>
-              <td>{{ row.timestamp }}</td>
-              <td>{{ row.trust_score }}</td>
-              <td>{{ row.bias_score }}</td>
-              <td>{{ row.ai_probability }}</td>
-              <td>{{ row.topic or 'General' }}</td>
-              <td><span class="pill {% if row.risk_level == 'LOW' %}pill-low{% elif row.risk_level == 'MEDIUM' %}pill-medium{% else %}pill-high{% endif %}">{{ row.risk_level }}</span></td>
-              <td>
-                <a href="/history" style="color: var(--primary); margin-right: 10px;">View</a>
-                <form method="post" action="/history/delete/{{ row.id }}" style="display: inline;">
-                  <button type="submit" style="background: none; border: none; color: #fca5a5; cursor: pointer;">Delete</button>
-                </form>
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr>
-              <td colspan="8">
-                <div class="empty-state" style="margin: 12px 0;">
-                  <span class="empty-icon"><i class="fa-solid fa-clock"></i></span>
-                  <h3>No analyses found</h3>
-                  <p>Adjust the filters or create a new analysis to populate the history.</p>
-                </div>
-              </td>
-            </tr>
-          {% endif %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+<section class="page-header"><h1>Session History</h1><p>Saved only in this browser session. Closing the browser or clearing site data removes it.</p></section>
+<div class="panel" style="margin-bottom:18px"><button class="secondary-button" id="export">Export CSV</button> <button class="secondary-button" id="clear">Clear session history</button></div>
+<div class="panel"><div id="history-list"></div></div>
 {% endblock %}
+{% block scripts %}<script>
+function renderHistory() { const records = trustLensRecords(); const list = document.getElementById('history-list'); list.innerHTML = records.length ? records.map(row => `<div style="padding:14px 0;border-bottom:1px solid var(--line)"><strong>${escapeHtml(row.topic || 'General')}</strong> · Trust ${row.trust_score}% · Bias ${Math.round(row.bias_score)}% · AI ${Math.round(row.ai_probability)}% · <strong>${escapeHtml(row.risk_level)}</strong><br><small>${sessionDate(row.timestamp)} — ${escapeHtml((row.article_text || '').slice(0,180))}</small></div>`).join('') : '<div class="empty-state"><h3>No analyses in this session</h3><p>Analyze an article to create session history.</p><a class="primary-button" href="/analyze">Analyze Article</a></div>'; }
+document.getElementById('clear').onclick = () => { if (confirm('Clear all analyses from this browser session?')) { clearTrustLensRecords(); renderHistory(); } };
+document.getElementById('export').onclick = () => { const fields = ['date','article','topic','trust_score','bias_score','ai_probability','risk_level']; const rows = trustLensRecords().map(row => [row.timestamp,row.article_text,row.topic,row.trust_score,row.bias_score,row.ai_probability,row.risk_level]); const csv = [fields,...rows].map(row => row.map(value => `"${String(value ?? '').replaceAll('"','""')}"`).join(',')).join('\n'); const link = document.createElement('a'); link.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); link.download='trustlens_session_history.csv'; link.click(); };
+renderHistory();
+</script>{% endblock %}

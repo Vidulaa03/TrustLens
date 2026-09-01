@@ -95,27 +95,14 @@ from __future__ import annotations
 import base64
 import csv
 import io
+import os
 import re
 from datetime import datetime
 from html.parser import HTMLParser
-from functools import wraps
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
-from werkzeug.security import check_password_hash, generate_password_hash
-
-from models.database import (
-    clear_history,
-    create_user,
-    delete_analysis,
-    fetch_all_analyses,
-    get_user_by_id,
-    get_user_by_username_or_email,
-    init_db,
-    insert_analysis,
-    recalculate_risk_levels,
-)
+from flask import Flask, jsonify, redirect, render_template, request, url_for
 from services.ai_detection_service import analyze_ai_signals
 from services.analytics_service import build_dashboard_summary, build_statistics_payload, build_trends_payload, classify_risk
 from services.enhanced_analytics import (
@@ -138,9 +125,6 @@ from utils.text_utils import character_count, clean_text, word_count
 
 app = Flask(__name__)
 app.config["JSON_SORT_KEYS"] = False
-app.secret_key = "trustlens-dev-secret-key"
-init_db()
-recalculate_risk_levels()
 
 
 class _ArticleTextParser(HTMLParser):
@@ -180,133 +164,33 @@ def _article_text_from_response(text, content_type=""):
     return text
 
 
-def _auth_response(success, message=None, user=None):
-    return {"success": success, "message": message, "user": user}
-
-
-def _current_user():
-    user_id = session.get("user_id")
-    if not user_id:
-        return None
-    return get_user_by_id(user_id)
-
-
-def _login_user(user):
-    session["user_id"] = user["id"]
-    session["user_name"] = user["name"]
-    session["user_username"] = user["username"]
-
-
-def login_required(view):
-    @wraps(view)
-    def wrapped_view(*args, **kwargs):
-        if not _current_user():
-            return redirect(url_for("login"))
-        return view(*args, **kwargs)
-
-    return wrapped_view
-
-
 @app.route("/api/auth/register", methods=["POST"])
 def api_register():
-    payload = request.get_json(silent=True) or {}
-    name = (payload.get("name") or "").strip()
-    username = (payload.get("username") or "").strip()
-    email = (payload.get("email") or "").strip()
-    password = payload.get("password") or ""
-
-    if not name or not username or not email or not password:
-        return jsonify(_auth_response(False, "Name, username, email, and password are required."))
-
-    if len(password) < 6:
-        return jsonify(_auth_response(False, "Password must be at least 6 characters long."))
-
-    if get_user_by_username_or_email(username) or get_user_by_username_or_email(email):
-        return jsonify(_auth_response(False, "An account with that username or email already exists."))
-
-    user_id = create_user(name, username, email, generate_password_hash(password))
-    user = get_user_by_id(user_id)
-    _login_user(user)
-    return jsonify(_auth_response(True, "User registered successfully.", {"id": user["id"], "name": user["name"], "username": user["username"], "email": user["email"]}))
+    return jsonify({"success": False, "error": "Authentication is disabled in browser-session mode."}), 410
 
 
 @app.route("/api/auth/login", methods=["POST"])
 def api_login():
-    payload = request.get_json(silent=True) or {}
-    identifier = (payload.get("username") or payload.get("email") or "").strip()
-    password = payload.get("password") or ""
-
-    if not identifier or not password:
-        return jsonify(_auth_response(False, "Username/email and password are required."))
-
-    user = get_user_by_username_or_email(identifier)
-    if not user or not check_password_hash(user["password_hash"], password):
-        return jsonify(_auth_response(False, "Invalid username/email or password."))
-
-    _login_user(user)
-    return jsonify(_auth_response(True, "Login successful.", {"id": user["id"], "name": user["name"], "username": user["username"], "email": user["email"]}))
+    return jsonify({"success": False, "error": "Authentication is disabled in browser-session mode."}), 410
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == "POST":
-        username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
-        user = get_user_by_username_or_email(username)
-        if user and check_password_hash(user["password_hash"], password):
-            _login_user(user)
-            return redirect(url_for("dashboard"))
-        return render_template("login.html", error="Invalid username/email or password.")
-    return render_template("login.html", error=None)
+    return redirect(url_for("analyze"))
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if request.method == "POST":
-        name = (request.form.get("name") or "").strip()
-        username = (request.form.get("username") or "").strip()
-        email = (request.form.get("email") or "").strip()
-        password = request.form.get("password") or ""
-
-        if not name or not username or not email or not password:
-            return render_template("register.html", error="Please fill in all fields.")
-        if len(password) < 6:
-            return render_template("register.html", error="Password must be at least 6 characters long.")
-        if get_user_by_username_or_email(username) or get_user_by_username_or_email(email):
-            return render_template("register.html", error="That username or email is already in use.")
-
-        user_id = create_user(name, username, email, generate_password_hash(password))
-        user = get_user_by_id(user_id)
-        _login_user(user)
-        return redirect(url_for("dashboard"))
-
-    return render_template("register.html", error=None)
+    return redirect(url_for("analyze"))
 
 
 @app.route("/logout")
 def logout():
-    session.clear()
-    return redirect(url_for("login"))
+    return redirect(url_for("analyze"))
 
 
 def _json_response(success, data=None, error=None):
     return {"success": success, "data": data, "error": error}
-
-
-def _record_from_analysis(article_text, headline, analysis, risk_level=None):
-    return {
-        "article_text": clean_text(article_text)[:5000],
-        "headline": clean_text(headline)[:500] if headline else "",
-        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
-        "trust_score": int(analysis.get("trust_score", 0)),
-        "fake_probability": float(analysis.get("fake_probability", 0)),
-        "real_probability": float(analysis.get("real_probability", 0)),
-        "bias_score": float(analysis.get("bias_score", 0)),
-        "ai_probability": float(analysis.get("ai_probability", 0)),
-        "topic": analysis.get("topic") or "General",
-        "headline_score": int(analysis.get("headline_score", 50)),
-        "risk_level": risk_level or analysis.get("risk_level") or "LOW",
-    }
 
 
 def _save_analysis_record(article_text, headline, analysis):
@@ -318,8 +202,6 @@ def _save_analysis_record(article_text, headline, analysis):
         analysis.get("ai_probability", 0),
     )
     analysis["risk_level"] = risk_level
-    analysis_id = insert_analysis(_record_from_analysis(article_text, headline, analysis, risk_level))
-    analysis["id"] = analysis_id
     return analysis
 
 
@@ -374,21 +256,15 @@ def _read_uploaded_text(file_storage):
 
 @app.route("/")
 def index():
-    if _current_user():
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
+    return redirect(url_for("analyze"))
 
 
 @app.route("/dashboard")
-@login_required
 def dashboard():
-    records = fetch_all_analyses()
-    summary = build_dashboard_summary_v2(records)
-    return render_template("dashboard.html", dashboard_data=summary)
+    return render_template("dashboard.html")
 
 
 @app.route("/analyze", methods=["GET", "POST"])
-@login_required
 def analyze():
     article_text = ""
     source_type = request.form.get("source_type") or "text"
@@ -438,59 +314,20 @@ def analyze():
 
 
 @app.route("/history")
-@login_required
 def history():
-    records = fetch_all_analyses()
-    search = request.args.get("search", "").strip().lower()
-    topic = request.args.get("topic", "").strip()
-    risk = request.args.get("risk", "").strip()
-    score = request.args.get("score", "").strip()
-
-    filtered = []
-    for row in records:
-        article = (row["article_text"] or "").lower()
-        if search and search not in article:
-            continue
-        if topic and row.get("topic") != topic:
-            continue
-        if risk and row.get("risk_level") != risk:
-            continue
-        if score:
-            target = int(score)
-            if row.get("trust_score", 0) < target:
-                continue
-        filtered.append(row)
-
-    topics = sorted({row.get("topic") or "General" for row in records})
-    risks = sorted({row.get("risk_level") or "LOW" for row in records})
-    return render_template("history.html", analyses=filtered, topics=topics, risks=risks)
+    return render_template("history.html", analyses=[], topics=[], risks=[])
 
 
 @app.route("/history/delete/<int:analysis_id>", methods=["POST"])
-@login_required
 def delete_history_entry(analysis_id):
-    delete_analysis(analysis_id)
     return redirect(url_for("history"))
 
 
 @app.route("/history/export.csv")
-@login_required
 def export_history_csv():
-    analyses = fetch_all_analyses()
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["id", "date", "article", "topic", "trust_score", "bias_score", "ai_probability", "risk_level"])
-    for row in analyses:
-        writer.writerow([
-            row["id"],
-            row["timestamp"],
-            (row["article_text"] or "")[:120],
-            row.get("topic") or "General",
-            row.get("trust_score"),
-            row.get("bias_score"),
-            row.get("ai_probability"),
-            row.get("risk_level"),
-        ])
     csv_data = output.getvalue()
     return csv_data, 200, {"Content-Type": "text/csv", "Content-Disposition": "attachment; filename=trustlens_history.csv"}
 
@@ -516,69 +353,36 @@ def ai_detection():
 
 
 @app.route("/statistics")
-@login_required
 def statistics():
-    records = fetch_all_analyses()
-    if not records:
-        return render_template("statistics.html", stats=None)
-    stats = build_statistics_payload_v2(records)
-    return render_template("statistics.html", stats=stats)
+    return render_template("statistics.html", stats=None)
 
 
 @app.route("/trends")
-@login_required
 def trends():
-    records = fetch_all_analyses()
-    if not records:
-        return render_template("trends.html", trend_data=None)
-    trend_data = build_trends_payload_v2(records)
-    return render_template("trends.html", trend_data=trend_data)
+    return render_template("trends.html", trend_data=None)
 
 
 @app.route("/settings", methods=["GET", "POST"])
-@login_required
 def settings():
-    if request.method == "POST":
-        if request.form.get("action") == "clear_history":
-            clear_history()
-            return redirect(url_for("settings"))
     return render_template("settings.html")
 
 
 @app.route("/api-access")
-@login_required
 def api_access():
     return render_template("api_access.html", api_status="Connected", usage_total=0, usage_limit=1000)
 
 
 @app.route("/profile")
-@login_required
 def profile():
-    user = _current_user()
-    records = fetch_all_analyses()
-    return render_template(
-        "profile.html",
-        user=user,
-        analysis_count=len(records),
-        recent_analysis=records[:3] if records else [],
-    )
+    return redirect(url_for("analyze"))
 
 
 @app.route("/article/<int:analysis_id>")
-@login_required
 def article_report(analysis_id):
     """
     Displays detailed Article Intelligence Report for a specific analysis.
     """
-    records = fetch_all_analyses()
-    analysis_record = None
-    for r in records:
-        if r.get("id") == analysis_id:
-            analysis_record = r
-            break
-    
-    if not analysis_record:
-        return redirect(url_for("history"))
+    return redirect(url_for("history"))
     
     # Generate intelligent summaries
     intelligence_summary = generate_intelligence_summary(analysis_record, analysis_record.get("article_text"))
@@ -599,26 +403,15 @@ def article_report(analysis_id):
 
 
 @app.route("/compare")
-@login_required
 def compare():
     """
     Article comparison interface.
     Shows the comparison workflow and interface for selecting articles.
     """
-    records = fetch_all_analyses()
-    
-    if not records or len(records) < 2:
-        return render_template("compare.html", compare_data={"empty_state": True, "articles": []})
-    
-    return render_template("compare.html", compare_data={
-        "empty_state": False,
-        "articles": records[:20],  # Show recent 20 for selection
-        "total_available": len(records),
-    })
+    return render_template("compare.html", compare_data={"empty_state": True, "articles": []})
 
 
 @app.route("/api/compare", methods=["POST"])
-@login_required
 def api_compare():
     """
     API endpoint for comparing two articles.
@@ -633,7 +426,7 @@ def api_compare():
     if not article_id_1 or not article_id_2:
         return jsonify({"success": False, "error": "Two article IDs required"})
     
-    records = fetch_all_analyses()
+    records = payload.get("articles") or []
     article1 = None
     article2 = None
     
@@ -710,4 +503,8 @@ def _generate_comparison_summary(article1: dict, article2: dict) -> str:
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(
+        host="127.0.0.1",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=os.environ.get("FLASK_DEBUG") == "1",
+    )

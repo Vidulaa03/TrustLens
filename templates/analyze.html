@@ -100,5 +100,9 @@
 
   if (textarea) textarea.addEventListener('input', updateCounts);
   updateCounts();
+
+  {% if analysis %}
+  addTrustLensRecord({{ article_text | tojson }}, {{ analysis | tojson }});
+  {% endif %}
 </script>
 {% endblock %}
